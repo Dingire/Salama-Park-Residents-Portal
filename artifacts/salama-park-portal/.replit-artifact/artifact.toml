@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Salama Park Residents Portal"
+description = "A mobile-first governance portal for Salama Park residents in Lusaka to access association documents, apply for membership, participate in constitution adoption, and follow official announcements and elections."
+version = "1.0.0"
+id = "artifacts/salama-park-portal"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19554
+
+[services.development]
+run = "pnpm --filter @workspace/salama-park-portal run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/salama-park-portal", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/salama-park-portal/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19554"
+BASE_PATH = "/"

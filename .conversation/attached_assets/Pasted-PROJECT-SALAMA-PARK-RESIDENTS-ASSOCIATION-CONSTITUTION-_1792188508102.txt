@@ -1,0 +1,686 @@
+PROJECT: SALAMA PARK RESIDENTS ASSOCIATION — CONSTITUTION ADOPTION, MEMBERSHIP REGISTRATION & ONLINE VOTING PORTAL
+1. YOUR ROLE
+Act as a senior full-stack software engineer, UI/UX designer, database architect, cybersecurity specialist, and election-system developer.
+Build a complete, production-oriented web application for the Salama Park Residents Association (SPRA), located in Zambia.
+The platform will digitize the Association's Constitution adoption petition, establish a verified membership register, collect electronic declarations of consent, support an authorised Constitution adoption process, and facilitate the first election of office bearers and representatives.
+This must be a functional full-stack application, not merely a landing page, static design, or clickable mockup.
+Implement the frontend, backend, database, authentication, authorisation, validation, administrative workflows, reporting, and deployment configuration.
+Do not leave critical functionality as non-working buttons or simulated success messages. If a third-party integration requires credentials, implement the integration interface, document the required environment variables, and clearly identify what remains to be configured.
+2. TECHNOLOGY STACK
+Use the following technologies unless the development environment requires a compatible alternative:
+
+Frontend: React with TypeScript.
+Styling: Tailwind CSS and a consistent, accessible component library.
+Backend and database: Supabase with PostgreSQL.
+Authentication: Supabase Auth or an equivalent secure authentication provider.
+Database security: PostgreSQL Row Level Security (RLS).
+Server-side operations: Supabase Edge Functions or a secure server-side API.
+Hosting: Vercel or another compatible production hosting platform.
+Document handling: secure private storage for sensitive records and publicly accessible approved documents.
+Charts and reporting: an accessible chart library.
+Date and time: Africa/Lusaka timezone.
+Currency: Zambian Kwacha (ZMW), if subscription and levy management is implemented.
+
+Use environment variables for secrets. Never expose service-role keys, database passwords, authentication secrets, or private API credentials in frontend code.
+3. DESIGN AND BRANDING
+Create a professional, trustworthy, modern community governance portal.
+The website should communicate transparency, fairness, accountability, participation, and security.
+Visual direction:
+
+Primary colours: dark navy blue, white, and restrained green accents.
+Use a clean, readable font.
+Use generous spacing, clear headings, accessible contrast, and simple navigation.
+Make the interface responsive for Android phones, iPhones, tablets, laptops, and desktop computers.
+Design mobile-first because many residents will participate using smartphones.
+Use clear status labels such as Pending Verification, Verified, Rejected, Petition Open, Voting Open, Voting Closed, and Results Published.
+Use accessible forms with clear validation errors.
+Include loading states, empty states, error handling, confirmation screens, and helpful instructions.
+Do not use fabricated statistics, fake residents, or invented election results in production.
+
+Website title:
+“Salama Park Residents Association”
+Suggested subtitle:
+“Constitution Adoption, Membership Registration & Elections Portal”
+4. USER ROLES AND PERMISSIONS
+Implement role-based access control with the following roles:
+A. Public Visitor
+Can:
+
+View the homepage and public announcements.
+Read or download approved versions of the Draft Constitution, amendment proposals, petition, and explanatory note.
+View petition deadlines and official process updates.
+View published aggregate statistics and authorised election results.
+Read instructions about registration and voting.
+
+Cannot:
+
+View private resident records.
+View NRC numbers, private contact details, individual signatures, or confidential verification documents.
+Access member-only voting pages.
+
+B. Resident / Applicant
+Can:
+
+Create an account.
+Submit a membership registration application.
+Provide required residency information.
+Read the Constitution and petition.
+Submit an electronic declaration of consent to the entire Draft Constitution.
+View their own application status and confirmation reference.
+Correct or update their information through an approved process.
+Request withdrawal of their petition signature before the applicable closing deadline.
+Receive notifications concerning their application.
+Vote when authorised and eligible.
+Receive a ballot receipt code that does not reveal their selections.
+View their own voting confirmation without accessing their ballot contents.
+
+Cannot:
+
+Approve their own membership.
+Change their eligibility or voting status.
+Vote more than once in the same election.
+View another resident's private information.
+Change submitted election results.
+
+C. Returning Officer
+Can:
+
+Review registrations and petition submissions.
+Verify eligibility according to the formally approved membership criteria.
+Record approval, rejection, or a request for clarification.
+Provide reasons for decisions.
+Review duplicate and disputed entries.
+Maintain the verification record.
+Monitor petition thresholds and election turnout.
+Prepare verification reports.
+Publish results only after the required authorisation.
+Export authorised reports.
+
+Cannot:
+
+Contest an election while serving as Returning Officer.
+Alter or delete a cast ballot.
+See which candidate or option an identified resident selected.
+Change an election's rules after voting begins.
+
+D. Scrutineer
+Can:
+
+Review authorised verification records.
+Assist with duplicate and disputed-entry reviews.
+Independently review counts and audit reports.
+Record objections and findings.
+
+Restrict access to personal information to the minimum required for the assigned duty.
+E. Administrator / Executive Committee
+Can:
+
+Configure the portal.
+Upload approved governance documents.
+Set petition and election dates.
+Configure membership requirements following formal approval.
+Appoint authorised officials and assign roles.
+Approve online voting arrangements and record the relevant resolution.
+Configure election positions, candidates, voting periods, and approved eligibility rules.
+Review audit logs.
+Authorise publication of verified registers and results.
+Export reports and manage official announcements.
+
+Use separation of duties for critical actions. Where feasible, require two authorised officials to approve changes to election configuration, publication of final results, and other sensitive operations.
+An administrator must not have an interface or database privilege that exposes the relationship between a resident's identity and their secret ballot.
+5. PUBLIC HOMEPAGE
+Create a polished homepage containing:
+
+Association name and branding.
+A short explanation of the Constitution adoption initiative.
+A prominent “Read the Draft Constitution” button.
+A prominent “Register as a Resident” button.
+A “Sign the Petition” button.
+An “Access Online Voting” button, enabled only when voting is open.
+Official announcements.
+Petition opening and closing dates.
+A petition progress section.
+An explanation of the proposed two-thirds adoption threshold and 25% quorum requirement, clearly labelled as subject to formal confirmation.
+Frequently asked questions.
+Contact information supplied by the Association.
+A footer containing privacy information, terms of use, and official notices.
+
+Progress indicators must be calculated from verified records and the currently approved denominator. Do not display a misleading percentage based on unverified registrations.
+If the membership denominator has not been formally established, display “Membership register verification in progress” rather than inventing a threshold.
+6. DOCUMENT LIBRARY
+Create a document library where authorised officials can upload, version, publish, and archive governance documents.
+Document categories:
+
+Existing SPRA Constitution.
+Entire Draft Constitution.
+SPRA Constitution Amendment Proposals.
+Constitution Adoption Petition.
+Explanatory Note.
+Executive Committee resolutions.
+Online voting system approval resolution.
+Official notices.
+Returning Officer verification report.
+Election rules and candidate information.
+Adopted Constitution.
+
+For each document, store:
+
+Title.
+Description.
+Version number.
+Upload date.
+Publication status.
+Approving official.
+Approval date.
+Effective date, if applicable.
+File checksum where appropriate.
+Change history.
+
+Show residents the version they are being asked to approve.
+Require residents to acknowledge the exact version of the Draft Constitution and petition when submitting their consent. Preserve a record of the document version and acknowledgement timestamp.
+Do not silently replace a document version after residents have signed it. If a material amendment is approved, preserve the old version, publish the new version, notify residents, and determine whether renewed consent is required.
+7. RESIDENT REGISTRATION AND MEMBERSHIP
+Build a multi-step registration form.
+Collect only the information necessary for the Association's approved membership and verification process.
+Suggested fields:
+
+Full legal name.
+National Registration Card (NRC) number or approved alternative identity reference, if necessary and lawful.
+House number.
+Street or zone.
+Phone number.
+Email address, if available.
+Confirmation of residence in Salama Park.
+Preferred notification method.
+Acceptance of the privacy notice.
+Date and time of submission.
+
+Do not require email if residents can legitimately participate using an alternative approved authentication method.
+Validate required fields on both the frontend and server.
+Registration workflow:
+
+Resident creates an account or begins registration.
+System validates the supplied details.
+System checks for potential duplicate accounts and duplicate identity references.
+Application enters Pending Verification status.
+An authorised official reviews the application.
+Official approves, rejects, or requests clarification.
+The system records the decision, reviewer, timestamp, and reason.
+The resident receives a status notification.
+Approved residents become eligible for subsequent petition and voting workflows, subject to the applicable rules.
+
+Implement a safe duplicate-detection workflow. Do not automatically reject a resident solely because of a similar name, shared phone, or household address.
+Membership eligibility must be determined according to formally approved rules and applicable law. Do not assume that submitting a form automatically makes someone an official member.
+Allow residents to correct errors through a controlled workflow that preserves the audit trail.
+8. PETITION AND ELECTRONIC CONSENT
+Create a dedicated petition page based on the supplied document titled:
+“PETITION FOR THE ADOPTION OF THE ENTIRE DRAFT CONSTITUTION AND THE ESTABLISHMENT OF A NEW REGISTER FOR ONLINE VOTING.”
+The petition must be available in readable HTML and downloadable PDF format.
+Display:
+
+Petition opening date.
+Petition closing date.
+Applicable eligibility criteria.
+The precise Constitution version being supported.
+The proposed adoption threshold.
+Information on how signatures will be verified.
+Information on the use of personal data.
+Instructions for withdrawing a signature before the applicable deadline.
+Contact details for questions and objections.
+
+Before signing, require the resident to confirm that they:
+
+Have had an opportunity to read the entire Draft Constitution.
+Consent to the specific version identified on the page.
+Confirm their residency and provide truthful information.
+Understand the intended use of their registration information.
+Understand the petition's proposed founding-period provisions.
+Understand the procedure for withdrawing a signature.
+Are signing voluntarily.
+
+Store:
+
+Resident account reference.
+Petition version.
+Constitution version.
+Declaration version.
+Submission timestamp.
+Signature or consent record.
+Confirmation reference.
+Status.
+Withdrawal request and processing history, if applicable.
+
+An electronic signature may consist of an authenticated electronic declaration, a clear affirmative action, and a recorded audit trail. Do not rely solely on a typed name or an image of a handwritten signature as proof of identity.
+After successful submission, display a confirmation page with a unique petition receipt reference.
+The resident must be able to download or print a copy of their own declaration.
+Prevent duplicate active signatures for the same resident and petition. Enforce this through database constraints and server-side validation.
+Support withdrawal requests before the deadline, with the request recorded and processed under the approved rules. Preserve the audit trail.
+Do not collect subscriptions, donations, or levies as a condition of signing the petition.
+IMPORTANT: A petition signature is not automatically equivalent to a valid vote at a general meeting. Implement the petition as evidence of consent and support. Whether it legally constitutes a binding written resolution or counts as a formal adoption vote must be determined by the Association's valid rules and applicable law.
+9. MEMBERSHIP REGISTER
+Create an administrative register with:
+
+Unique membership reference.
+Full name.
+Approved identity reference.
+House number.
+Street or zone.
+Contact details.
+Application date.
+Verification status.
+Verification decision and timestamp.
+Membership eligibility status.
+Petition signature status.
+Voting eligibility status.
+Date added and date last updated.
+
+Provide search, filtering, pagination, duplicate review, and authorised export.
+Allow the Returning Officer to record accepted, rejected, and disputed entries with reasons.
+Create a register snapshot for each petition or election when required. Each snapshot must record:
+
+The applicable rules.
+The cutoff date.
+The list of eligible membership references.
+The total denominator.
+The approving officials.
+The timestamp.
+A cryptographic hash or other integrity check for the exported snapshot.
+
+Preserve earlier snapshots so that the denominator cannot be silently changed after a vote starts or a result is announced.
+The Association must determine and formally approve the legal membership criteria and the method for establishing the initial register.
+Do not publish NRC numbers, private phone numbers, emails, or other unnecessary personal information in a public register. Provide a redacted public version where publication is authorised.
+10. PETITION THRESHOLDS AND CALCULATIONS
+Create a threshold calculator based on the formally approved membership register.
+For a denominator N:
+
+Two-thirds adoption threshold: ceiling of (2 × N) / 3.
+Minimum 25% quorum: ceiling of N × 0.25.
+
+Example for 350 eligible members:
+
+Two-thirds threshold: 234.
+Minimum 25% quorum: 88.
+
+Display:
+
+Verified membership denominator.
+Signatures submitted.
+Signatures accepted.
+Signatures rejected.
+Disputed signatures.
+Withdrawn signatures.
+Required threshold.
+Current count.
+Remaining signatures required.
+Whether the proposed threshold has been reached.
+
+Allow authorised users to compare multiple threshold rules if required by the existing Constitution.
+Do not assume that petition signatures automatically satisfy a meeting quorum. Keep these concepts separate in the system:
+A. Petition support threshold.
+B. Formal general meeting quorum.
+C. Constitution adoption decision threshold.
+D. Election participation quorum.
+E. Candidate election thresholds.
+Each must be configured according to the applicable, formally approved rules.
+Do not automatically declare the Constitution adopted solely because a numerical threshold has been reached. Require an authorised verification and formal decision record.
+11. ONLINE VOTING SYSTEM
+Implement a secure election module with two distinct voting processes:
+A. Constitution adoption ballot, if approved as the valid method of adoption.
+B. Election of office bearers and representatives.
+Allow authorised officials to configure:
+
+Election title.
+Type of ballot.
+Eligible voter snapshot.
+Opening and closing dates.
+Positions being contested.
+Candidate profiles.
+Number of permitted selections.
+Whether abstention is allowed.
+Counting method.
+Applicable quorum and winning thresholds.
+Result publication date.
+Authorised election officials.
+
+For the Constitution adoption ballot, provide the approved choices, such as “For Adoption” and “Against Adoption”, and any other options required by the formally approved rules.
+For elections, allow eligible residents to select candidates for the specific offices, subject to the approved number of selections and election rules.
+Candidate profiles may include:
+
+Name.
+Street or zone.
+Position contested.
+Candidate statement.
+Approved photograph, if provided.
+Eligibility confirmation.
+Nomination status.
+
+Do not invent candidates or publish unapproved candidate information.
+Voting security requirements
+
+Only eligible members in the frozen voter snapshot may vote.
+Each eligible member may cast only one ballot per election.
+Duplicate submissions must be prevented server-side and through database constraints.
+Ballot contents must remain secret.
+Resident identities and vote selections must be stored separately.
+No ordinary administrator, Returning Officer, scrutineer, or database user should be able to view an identity-to-vote mapping.
+The system must issue a random ballot receipt code.
+The receipt code must confirm inclusion in the ballot system without revealing the voter's selections.
+Ballots must be immutable after submission, except through a formally defined and audited election cancellation or restart procedure.
+Closing an election must prevent new submissions.
+The system must preserve audit logs for opening, closing, configuration changes, counting and publication.
+The counting method must be documented and reproducible.
+Published results must include the number of eligible voters, ballots cast, turnout, valid ballots, invalid ballots where applicable, abstentions where applicable, and candidate or option totals.
+Provide an independent verification and reconciliation procedure.
+If the system cannot provide the required secrecy, integrity, or auditability, do not describe it as suitable for official elections.
+
+Implement appropriate cryptographic separation between voter authentication and ballot storage. Do not merely hide names from the interface while retaining an easily accessible table that maps each voter to their choices.
+Explain the limits of the chosen design and have the system independently reviewed before it is used for a binding election.
+Voting user experience
+The voting interface should:
+
+Explain the ballot before the voter begins.
+Display only positions and candidates relevant to the election.
+Allow the voter to review their selections before submission.
+Clearly warn that submission is final.
+Require explicit confirmation before casting the ballot.
+Display a receipt reference after a successful submission.
+Prevent accidental duplicate submissions.
+Work reliably on mobile devices and slow internet connections.
+
+Do not show an individual's selections in their voting history or confirmation receipt.
+12. ONLINE VOTING APPROVAL AND MEETING MANAGEMENT
+Create a workflow for the Executive Committee to record its resolution approving the electronic voting system.
+Store:
+
+Resolution reference.
+Date of approval.
+Voting platform and version.
+Security and secrecy review status.
+Voting period.
+Authentication method.
+Names and roles of approving officials.
+Attached resolution document.
+Publication timestamp.
+
+Provide a meeting-management module with:
+
+Meeting title.
+Date, time, and format.
+Notice and agenda.
+Applicable quorum rule.
+Attendance records.
+Resolutions considered.
+Decision records.
+Minutes and attachments.
+
+Do not automatically treat electronic participation as satisfying a physical attendance requirement unless the applicable rules authorise it.
+Generate a draft set of minutes and a draft adoption resolution for review and approval by authorised officials.
+13. ELECTION RESULTS AND TRANSPARENCY
+Create a public results page that is disabled until authorised publication.
+Once published, display:
+
+Election title.
+Voting period.
+Total eligible voters.
+Total ballots cast.
+Turnout percentage.
+Valid ballots.
+Invalid ballots, if applicable.
+Votes for each option or candidate.
+Applicable threshold.
+Final outcome.
+Publication timestamp.
+Returning Officer's verification statement.
+Downloadable public results report.
+
+Protect ballot secrecy and do not reveal how an identifiable resident voted.
+Provide an audit report containing enough information to independently reconcile the totals without exposing personal data or secret ballot contents.
+If an election is disputed, mark the result as under review and display the authorised notice without prematurely presenting the result as final.
+14. NOTIFICATIONS
+Implement notification support for:
+
+Registration received.
+Registration approved or rejected.
+Request for additional information.
+Petition signed successfully.
+Signature withdrawal processed.
+Petition opening and closing reminders.
+Election opening and closing reminders.
+Voting confirmation.
+Results published.
+Official announcements.
+
+Support email where available.
+Make SMS or WhatsApp notifications optional integrations. Do not assume access to a WhatsApp Business API or SMS gateway without configuration and credentials.
+Avoid putting NRC numbers, ballot choices, or unnecessary sensitive personal details in notification messages.
+Allow residents to choose from approved notification options, subject to essential service notices and applicable privacy requirements.
+15. ADMINISTRATION DASHBOARD
+Build a comprehensive dashboard with:
+
+Total registration applications.
+Verified members.
+Pending applications.
+Rejected and disputed applications.
+Accepted petition signatures.
+Petition support percentage.
+Required adoption threshold.
+Election turnout.
+Upcoming deadlines.
+Current election status.
+Outstanding verification tasks.
+Recent administrative activity.
+
+Create dedicated management pages for:
+
+Residents and memberships.
+Petition submissions.
+Constitution and document versions.
+Returning Officer and scrutineer assignments.
+Election configuration.
+Candidate nominations.
+Voting periods.
+Results and reports.
+Meetings and minutes.
+Announcements.
+Privacy requests.
+Audit logs.
+System settings.
+
+Use server-side pagination and filtering for large datasets.
+Require re-authentication or additional confirmation for sensitive actions such as publishing results, changing eligibility rules, and exporting sensitive information.
+16. DATABASE DESIGN
+Create a properly normalised PostgreSQL schema, including appropriate relationships, indexes, constraints, and timestamps.
+Suggested tables:
+
+profiles
+roles
+profile_roles
+membership_applications
+memberships
+membership_verification_events
+petition_versions
+constitution_document_versions
+petition_submissions
+petition_withdrawal_requests
+register_snapshots
+register_snapshot_members
+committee_resolutions
+officials
+election_events
+election_positions
+candidate_nominations
+election_eligibility_snapshots
+voter_participation
+encrypted_or_separately_protected_ballots
+ballot_receipts
+election_tallies
+election_publications
+meetings
+meeting_attendance
+meeting_minutes
+announcements
+notifications
+audit_logs
+privacy_requests
+
+Adapt the schema to the actual implementation.
+Use UUIDs or similarly secure identifiers for internal records.
+Avoid using NRC numbers as database primary keys or public identifiers.
+Create appropriate unique constraints to prevent duplicate active petition signatures and duplicate voting.
+Separate personally identifiable information from secret ballot contents.
+Do not store passwords in application tables. Use the authentication provider.
+Implement RLS policies for all tables exposed to client applications.
+Use server-side validation for privileged operations. Never rely exclusively on frontend role checks.
+The audit log must be append-only for ordinary users and administrators. Restrict modification or deletion through database permissions and controlled retention procedures.
+Provide versioned SQL migrations and seed scripts containing only fictional development data.
+17. PRIVACY, SECURITY AND ZAMBIAN CONTEXT
+Design the system with Zambia's applicable laws and regulatory requirements in mind, including relevant data protection requirements and any requirements governing registered societies.
+Before deployment:
+
+Confirm the Association's legal authority and procedure for adopting the Constitution.
+Confirm the lawful basis for collecting and processing resident information.
+Provide a clear privacy notice.
+Collect only necessary information.
+Establish retention and deletion rules.
+Restrict access to sensitive information.
+Protect the application against common web vulnerabilities.
+Use HTTPS.
+Apply rate limiting and abuse prevention.
+Secure authentication and account recovery.
+Protect against SQL injection, cross-site scripting, cross-site request forgery where applicable, and unauthorised access.
+Use secure file upload validation.
+Keep backups and test restoration.
+Record security-relevant events.
+Define an incident-response procedure.
+Test all access-control rules.
+Conduct an independent security and election-process review before a binding vote.
+
+Do not publicly expose NRC numbers, addresses, signatures, authentication credentials, or individual ballots.
+Do not claim legal compliance, election certification, or absolute ballot secrecy without a basis for those claims.
+18. ACCESSIBILITY AND PERFORMANCE
+Ensure:
+
+Responsive mobile-first design.
+Keyboard accessibility.
+Screen-reader-friendly forms.
+Clear focus indicators.
+Appropriate contrast.
+Readable font sizes.
+Helpful validation messages.
+Low-bandwidth optimisation.
+Compressed images.
+Pagination for large tables.
+Graceful handling of network interruptions.
+Protection against accidental duplicate submissions.
+Clear retry behaviour where safe.
+
+Do not display success until the server has confirmed the operation.
+19. REPORTS AND EXPORTS
+Provide authorised export to CSV and PDF for:
+
+Membership register.
+Accepted and rejected petition submissions.
+Verification report.
+Threshold calculation report.
+Election turnout.
+Final election results.
+Audit summary.
+Meeting attendance.
+Meeting minutes.
+Executive Committee resolutions.
+
+Use role-based permissions and log sensitive exports.
+Public reports must be redacted and contain only information approved for publication.
+Include report generation date, applicable register snapshot, reporting period, and responsible official where appropriate.
+20. REQUIRED PAGES
+Create the following pages and routes:
+Public:
+
+/
+/about
+/documents
+/petition
+/membership
+/announcements
+/elections
+/results
+/privacy
+/faq
+/contact
+
+Authentication:
+
+/login
+/register
+/forgot-password
+/verify-account
+
+Resident:
+
+/resident/dashboard
+/resident/profile
+/resident/application
+/resident/petition
+/resident/voting
+/resident/receipts
+/resident/notifications
+
+Administration:
+
+/admin/dashboard
+/admin/members
+/admin/verifications
+/admin/petitions
+/admin/register-snapshots
+/admin/documents
+/admin/resolutions
+/admin/elections
+/admin/candidates
+/admin/results
+/admin/meetings
+/admin/announcements
+/admin/reports
+/admin/audit-logs
+/admin/settings
+
+Protect every private route using server-enforced permissions.
+21. TESTING REQUIREMENTS
+Write automated tests for the critical workflows.
+Include tests for:
+
+Registration validation.
+Duplicate identity and account handling.
+Authorised membership verification.
+Petition submission.
+Duplicate signature prevention.
+Signature withdrawal before the deadline.
+Petition closing-date enforcement.
+Register snapshot creation.
+Correct two-thirds and 25% calculations.
+Role-based access control.
+Voter eligibility.
+Duplicate ballot prevention.
+Secret ballot data separation.
+Election opening and closing.
+Result reconciliation.
+Unauthorised result publication.
+Audit log integrity.
+Personal information exposure.
+Document version changes.
+Network failures and retry handling.
+
+Use the example denominator of 350 to verify that the two-thirds threshold is 234 and the 25% minimum quorum is 88 when these formulas are formally applicable.
+Test that residents cannot access administrative endpoints by changing URLs or making direct API requests.
+Test that administrators cannot retrieve an identified resident's ballot choices.
+Do not use real resident data in automated tests.
+22. DEVELOPMENT DELIVERABLES
+Deliver:
+
+Complete working frontend.
+Complete backend and database integration.
+SQL schema and versioned migrations.
+Authentication and role-based authorisation.
+RLS policies.
+Server-side validation and protected API functions.
+Resident
+
