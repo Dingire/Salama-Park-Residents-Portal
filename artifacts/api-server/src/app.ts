@@ -80,7 +80,7 @@ if (existsSync(webDistDir)) {
       next();
       return;
     }
-    res.sendFile(path.join(webDistDir, "index.html"));
+    res.sendFile(path.join(webDistDir, "index.html"), { root: process.cwd() });
   });
 }
 
