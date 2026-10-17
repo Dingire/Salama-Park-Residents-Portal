@@ -1,10 +1,10 @@
-import { clerkClient, getAuth } from "@clerk/express";
 import {
   and,
   count,
   desc,
   eq,
   ilike,
+  inArray,
   lt,
   or,
 } from "drizzle-orm";
@@ -20,7 +20,15 @@ import {
   petitionSubmissionsTable,
   profilesTable,
   registerSnapshotsTable,
+  userRolesTable,
 } from "@workspace/db";
+import {
+  getAssociationRoles,
+  getAuthUserId,
+  hasRole,
+  adminRoles,
+  reviewerRoles,
+} from "../lib/auth";
 import {
   GetMyResidentApplicationResponse,
   GetMyPetitionReceiptsResponse,
@@ -44,11 +52,11 @@ import {
 
 const router: IRouter = Router();
 
-function getAuthenticatedUserId(
+async function requireUserId(
   req: Request,
   res: Response,
-): string | null {
-  const userId = getAuth(req).userId;
+): Promise<string | null> {
+  const userId = getAuthUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Sign in to continue." });
     return null;
@@ -72,27 +80,6 @@ function getPetitionState(config: {
   return "open" as const;
 }
 
-const allAssociationRoles = [
-  "admin",
-  "administrator",
-  "returning-officer",
-  "scrutineer",
-] as const;
-
-async function getAssociationRoles(userId: string): Promise<string[]> {
-  const user = await clerkClient.users.getUser(userId);
-  const roleClaim = user.publicMetadata.role;
-  const candidates = Array.isArray(roleClaim) ? roleClaim : [roleClaim];
-  return candidates.filter(
-    (role): role is string =>
-      typeof role === "string" && allAssociationRoles.includes(role as (typeof allAssociationRoles)[number]),
-  );
-}
-
-function hasRole(roles: string[], ...required: string[]) {
-  return required.some((role) => roles.includes(role));
-}
-
 router.get("/public/overview", async (_req, res): Promise<void> => {
   const [config] = await db
     .select()
@@ -107,6 +94,9 @@ router.get("/public/overview", async (_req, res): Promise<void> => {
     .limit(1);
 
   let acceptedPetitionSignatures = 0;
+  let rejectedPetitionSignatures = 0;
+  let disputedPetitionSignatures = 0;
+  let withdrawnPetitionSignatures = 0;
   if (config) {
     const [total] = await db
       .select({ value: count() })
@@ -117,16 +107,72 @@ router.get("/public/overview", async (_req, res): Promise<void> => {
           eq(petitionSubmissionsTable.status, "accepted"),
         ),
       );
+    const [rejected] = await db
+      .select({ value: count() })
+      .from(petitionSubmissionsTable)
+      .where(
+        and(
+          eq(petitionSubmissionsTable.petitionConfigurationId, config.id),
+          eq(petitionSubmissionsTable.status, "rejected"),
+        ),
+      );
+    const [disputed] = await db
+      .select({ value: count() })
+      .from(petitionSubmissionsTable)
+      .where(
+        and(
+          eq(petitionSubmissionsTable.petitionConfigurationId, config.id),
+          eq(petitionSubmissionsTable.status, "disputed"),
+        ),
+      );
+    const [withdrawn] = await db
+      .select({ value: count() })
+      .from(petitionSubmissionsTable)
+      .where(
+        and(
+          eq(petitionSubmissionsTable.petitionConfigurationId, config.id),
+          eq(petitionSubmissionsTable.status, "withdrawn"),
+        ),
+      );
     acceptedPetitionSignatures = total?.value ?? 0;
+    rejectedPetitionSignatures = rejected?.value ?? 0;
+    disputedPetitionSignatures = disputed?.value ?? 0;
+    withdrawnPetitionSignatures = withdrawn?.value ?? 0;
   }
+
+  const denominator = snapshot?.denominator ?? null;
+  const proposedThreshold = config?.proposedThreshold ?? null;
+  const twoThirdsThreshold =
+    denominator !== null ? Math.ceil((denominator * 2) / 3) : null;
+  const minimumQuorum = denominator !== null ? Math.ceil(denominator * 0.25) : null;
+  const signaturesRemaining =
+    proposedThreshold !== null
+      ? Math.max(proposedThreshold - acceptedPetitionSignatures, 0)
+      : null;
+  const thresholdReached =
+    proposedThreshold !== null
+      ? acceptedPetitionSignatures >= proposedThreshold
+      : null;
+  const supportPercentage =
+    denominator !== null && denominator > 0
+      ? (acceptedPetitionSignatures / denominator) * 100
+      : null;
 
   res.json(
     GetPublicOverviewResponse.parse({
       membershipVerificationProgress: !snapshot,
-      denominator: snapshot?.denominator ?? null,
+      denominator,
       acceptedPetitionSignatures,
+      rejectedPetitionSignatures,
+      disputedPetitionSignatures,
+      withdrawnPetitionSignatures,
       petitionStatus: config ? getPetitionState(config) : "not-configured",
-      proposedThreshold: config?.proposedThreshold ?? null,
+      proposedThreshold,
+      twoThirdsThreshold,
+      minimumQuorum,
+      signaturesRemaining,
+      thresholdReached,
+      supportPercentage,
     }),
   );
 });
@@ -209,7 +255,7 @@ router.get("/public/petition", async (_req, res): Promise<void> => {
 });
 
 router.get("/resident/application/me", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
 
   const [application] = await db
@@ -227,7 +273,7 @@ router.get("/resident/application/me", async (req, res): Promise<void> => {
 });
 
 router.post("/resident/application", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
 
   const parsed = SubmitResidentApplicationBody.safeParse(req.body);
@@ -264,7 +310,7 @@ router.post("/resident/application", async (req, res): Promise<void> => {
   const submittedAt = new Date();
 
   try {
-    const created = await db.transaction(async (tx) => {
+    const created = await db.transaction(async (tx: any) => {
       await tx.insert(profilesTable).values({ id: userId }).onConflictDoNothing();
       const [application] = await tx
         .insert(membershipApplicationsTable)
@@ -317,7 +363,7 @@ router.post("/resident/application", async (req, res): Promise<void> => {
 });
 
 router.post("/resident/petition", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
 
   const parsed = SubmitPetitionConsentBody.safeParse(req.body);
@@ -370,7 +416,7 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
   const reference = `PET-${randomUUID().slice(0, 10).toUpperCase()}`;
   const submittedAt = new Date();
   try {
-    const result = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx: any) => {
       await tx.insert(profilesTable).values({ id: userId }).onConflictDoNothing();
       const [submission] = await tx
         .insert(petitionSubmissionsTable)
@@ -421,7 +467,7 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
 });
 
 router.get("/resident/petition/receipts", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
 
   const receipts = await db
@@ -440,7 +486,7 @@ router.get("/resident/petition/receipts", async (req, res): Promise<void> => {
 });
 
 router.post("/resident/petition/withdraw", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
 
   const [config] = await db
@@ -473,7 +519,7 @@ router.post("/resident/petition/withdraw", async (req, res): Promise<void> => {
   }
 
   const withdrawnAt = new Date();
-  const result = await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx: any) => {
     const [withdrawn] = await tx
       .update(petitionSubmissionsTable)
       .set({ status: "withdrawn", withdrawnAt })
@@ -507,12 +553,11 @@ router.post("/resident/petition/withdraw", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/access", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
+
   const roles = await getAssociationRoles(userId);
-  const role = ["administrator", "admin", "returning-officer", "scrutineer"].find((candidate) =>
-    roles.includes(candidate),
-  ) ?? null;
+  const role = adminRoles.find((candidate) => roles.includes(candidate)) ?? null;
   res.json(
     GetAdminAccessResponse.parse({
       allowed: role !== null,
@@ -522,10 +567,10 @@ router.get("/admin/access", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/dashboard", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const roles = await getAssociationRoles(userId);
-  if (!hasRole(roles, "admin", "administrator", "returning-officer", "scrutineer")) {
+  if (!hasRole(roles, ...adminRoles)) {
     res.status(403).json({ error: "An authorized association role is required." });
     return;
   }
@@ -537,7 +582,7 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
     })
     .from(membershipApplicationsTable)
     .groupBy(membershipApplicationsTable.status);
-  const counts = new Map(applicationCounts.map((item) => [item.status, item.value]));
+  const counts = new Map(applicationCounts.map((item: any) => [item.status, item.value]));
 
   const [totalApplications] = await db
     .select({ value: count() })
@@ -553,18 +598,45 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
     .orderBy(desc(petitionConfigurationsTable.createdAt))
     .limit(1);
   let acceptedPetitionSignatures = 0;
+  let rejectedPetitionSignatures = 0;
+  let disputedPetitionSignatures = 0;
+  let withdrawnPetitionSignatures = 0;
   if (config) {
-    const [signatures] = await db
-      .select({ value: count() })
-      .from(petitionSubmissionsTable)
-      .where(
-        and(
-          eq(petitionSubmissionsTable.petitionConfigurationId, config.id),
-          eq(petitionSubmissionsTable.status, "accepted"),
-        ),
-      );
-    acceptedPetitionSignatures = signatures?.value ?? 0;
+    const statuses = ["accepted", "rejected", "disputed", "withdrawn"] as const;
+    for (const status of statuses) {
+      const [row] = await db
+        .select({ value: count() })
+        .from(petitionSubmissionsTable)
+        .where(
+          and(
+            eq(petitionSubmissionsTable.petitionConfigurationId, config.id),
+            eq(petitionSubmissionsTable.status, status),
+          ),
+        );
+      if (status === "accepted") acceptedPetitionSignatures = row?.value ?? 0;
+      if (status === "rejected") rejectedPetitionSignatures = row?.value ?? 0;
+      if (status === "disputed") disputedPetitionSignatures = row?.value ?? 0;
+      if (status === "withdrawn") withdrawnPetitionSignatures = row?.value ?? 0;
+    }
   }
+
+  const denominator = snapshot?.denominator ?? null;
+  const proposedThreshold = config?.proposedThreshold ?? null;
+  const twoThirdsThreshold =
+    denominator !== null ? Math.ceil((denominator * 2) / 3) : null;
+  const minimumQuorum = denominator !== null ? Math.ceil(denominator * 0.25) : null;
+  const signaturesRemaining =
+    proposedThreshold !== null
+      ? Math.max(proposedThreshold - acceptedPetitionSignatures, 0)
+      : null;
+  const thresholdReached =
+    proposedThreshold !== null
+      ? acceptedPetitionSignatures >= proposedThreshold
+      : null;
+  const supportPercentage =
+    denominator !== null && denominator > 0
+      ? (acceptedPetitionSignatures / denominator) * 100
+      : null;
 
   res.json(
     GetAdminDashboardResponse.parse({
@@ -574,17 +646,21 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
       verifiedApplications: counts.get("verified") ?? 0,
       rejectedApplications: counts.get("rejected") ?? 0,
       acceptedPetitionSignatures,
-      verifiedDenominator: snapshot?.denominator ?? null,
+      verifiedDenominator: denominator,
       petitionStatus: config ? getPetitionState(config) : "not-configured",
+      twoThirdsThreshold,
+      minimumQuorum,
+      signaturesRemaining,
+      thresholdReached,
     }),
   );
 });
 
 router.get("/admin/applications", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const roles = await getAssociationRoles(userId);
-  if (!hasRole(roles, "admin", "administrator", "returning-officer", "scrutineer")) {
+  if (!hasRole(roles, ...adminRoles)) {
     res.status(403).json({ error: "An authorized association role is required." });
     return;
   }
@@ -594,7 +670,7 @@ router.get("/admin/applications", async (req, res): Promise<void> => {
     return;
   }
 
-  const filters = [];
+  const filters: any[] = [];
   if (query.data.status) {
     filters.push(eq(membershipApplicationsTable.status, query.data.status));
   }
@@ -644,10 +720,10 @@ router.get("/admin/applications", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/applications/:id/review", async (req, res): Promise<void> => {
-  const userId = getAuthenticatedUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const roles = await getAssociationRoles(userId);
-  if (!hasRole(roles, "admin", "administrator", "returning-officer")) {
+  if (!hasRole(roles, ...reviewerRoles)) {
     res.status(403).json({ error: "Returning Officer or administrator access is required." });
     return;
   }
@@ -660,7 +736,7 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
   }
 
   const reviewedAt = new Date();
-  const result = await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx: any) => {
     const [application] = await tx
       .update(membershipApplicationsTable)
       .set({

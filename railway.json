@@ -1,0 +1,19 @@
+# Railway deployment config
+version: "3.0"
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env:
+      - DATABASE_URL
+      - PORT=${PORT:-8080}
+      - NODE_ENV=production
+      - RUN_MIGRATIONS=true
+      - WEB_DIST_DIR=artifacts/salama-park-portal/dist/public
+      - CLERK_SECRET_KEY
+      - CLERK_PUBLISHABLE_KEY
+      - BOOTSTRAP_ADMIN_USER_ID
+    ports:
+      - "8080:8080"
+    command: ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
