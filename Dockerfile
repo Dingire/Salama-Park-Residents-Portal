@@ -9,12 +9,12 @@ COPY lib ./lib
 COPY artifacts ./artifacts
 COPY scripts ./scripts
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
 ENV BASE_PATH=/
 
-RUN pnpm -r --if-present run build
+RUN pnpm rebuild esbuild @clerk/shared && pnpm -r --if-present run build
 
 FROM node:24-slim AS runner
 
