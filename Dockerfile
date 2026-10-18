@@ -14,6 +14,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
 ENV BASE_PATH=/
 
+RUN pnpm approve-builds esbuild @clerk/shared --yes || (echo '{"approvedBuilds":[]}' > /app/.modules.yaml 2>/dev/null; true)
 RUN pnpm rebuild esbuild @clerk/shared
 RUN pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/salama-park-portal run build
 
