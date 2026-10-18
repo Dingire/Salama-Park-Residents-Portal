@@ -17,7 +17,7 @@ ENV BASE_PATH=/
 
 RUN pnpm approve-builds esbuild @clerk/shared --yes || (echo '{"approvedBuilds":[]}' > /app/.modules.yaml 2>/dev/null; true)
 RUN pnpm rebuild esbuild @clerk/shared
-RUN pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/salama-park-portal run build
+RUN PORT=8080 pnpm --filter @workspace/api-server run build && PORT=8080 pnpm --filter @workspace/salama-park-portal run build
 
 FROM node:24-slim AS runner
 
@@ -37,4 +37,5 @@ ENV RUN_MIGRATIONS=true
 
 EXPOSE 8080
 CMD ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+
 
