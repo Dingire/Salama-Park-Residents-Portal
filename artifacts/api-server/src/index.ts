@@ -16,12 +16,18 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-runMigrations()
-  .catch((err) => {
-    logger.error({ err }, "Failed to apply database migrations");
-    process.exit(1);
-  })
-  .then(() => {
+Promise.resolve()
+  .then(async () => {
+    try {
+      await runMigrations();
+    } catch (err) {
+      logger.error({ err }, "Failed to apply database migrations");
+      if (process.env.NODE_ENV === "production") {
+        logger.warn("Continuing without migrations due to startup error");
+      } else {
+        process.exit(1);
+      }
+    }
     app.listen(port, (err) => {
       if (err) {
         logger.error({ err }, "Error listening on port");
