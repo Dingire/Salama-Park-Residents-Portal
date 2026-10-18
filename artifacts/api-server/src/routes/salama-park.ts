@@ -5,8 +5,10 @@ import {
   eq,
   ilike,
   inArray,
+  isNull,
   lt,
   or,
+  sql,
 } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
@@ -29,6 +31,7 @@ import {
   adminRoles,
   reviewerRoles,
 } from "../lib/auth";
+import { pushToGoogleSheets } from "../lib/google-sheets";
 import {
   GetMyResidentApplicationResponse,
   GetMyPetitionReceiptsResponse,
@@ -36,10 +39,13 @@ import {
   GetAdminApplicationsQueryParams,
   GetAdminApplicationsResponse,
   GetAdminDashboardResponse,
+  GetAdminPetitionSubmissionsQueryParams,
+  GetAdminPetitionSubmissionsResponse,
   GetPublicAnnouncementsResponse,
   GetPublicDocumentsResponse,
   GetPublicOverviewResponse,
   GetPublicPetitionResponse,
+  GetPublicPollResultsResponse,
   SubmitPetitionConsentBody,
   SubmitPetitionConsentResponse,
   SubmitResidentApplicationBody,
@@ -47,6 +53,9 @@ import {
   ReviewMembershipApplicationBody,
   ReviewMembershipApplicationParams,
   ReviewMembershipApplicationResponse,
+  VerifyPetitionSubmissionBody,
+  VerifyPetitionSubmissionParams,
+  VerifyPetitionSubmissionResponse,
   WithdrawMyPetitionSignatureResponse,
 } from "@workspace/api-zod";
 
@@ -78,6 +87,105 @@ function getPetitionState(config: {
     return "closed" as const;
   }
   return "open" as const;
+}
+
+const DECLARATION_KEYS = [
+  "readConstitution",
+  "consentToVersion",
+  "truthfulResidency",
+  "understandDataUse",
+  "understandFoundingProvisions",
+  "understandWithdrawal",
+  "voluntary",
+] as const;
+
+type SubscriptionVoteValue = "k50" | "k100" | "k150";
+
+async function computePollMetrics(configId?: string | null) {
+  const acceptedFilter = configId
+    ? and(
+        eq(petitionSubmissionsTable.status, "accepted"),
+        eq(petitionSubmissionsTable.petitionConfigurationId, configId),
+      )
+    : eq(petitionSubmissionsTable.status, "accepted");
+
+  const grouped = await db
+    .select({
+      subscriptionVote: petitionSubmissionsTable.subscriptionVote,
+      householdType: petitionSubmissionsTable.householdType,
+      value: count(),
+    })
+    .from(petitionSubmissionsTable)
+    .where(acceptedFilter)
+    .groupBy(
+      petitionSubmissionsTable.subscriptionVote,
+      petitionSubmissionsTable.householdType,
+    );
+
+  let votesK50 = 0;
+  let votesK100 = 0;
+  let votesK150 = 0;
+  let homeowners = 0;
+  let tenants = 0;
+  for (const row of grouped) {
+    if (row.subscriptionVote === "k50") votesK50 += row.value;
+    if (row.subscriptionVote === "k100") votesK100 += row.value;
+    if (row.subscriptionVote === "k150") votesK150 += row.value;
+    if (row.householdType === "homeowner") homeowners += row.value;
+    if (row.householdType === "tenant") tenants += row.value;
+  }
+
+  const [volunteerRow] = await db
+    .select({ value: count() })
+    .from(petitionSubmissionsTable)
+    .where(
+      and(acceptedFilter, eq(petitionSubmissionsTable.willingToVolunteer, true)),
+    );
+  const [onlineVotingRow] = await db
+    .select({ value: count() })
+    .from(petitionSubmissionsTable)
+    .where(
+      and(
+        acceptedFilter,
+        eq(petitionSubmissionsTable.onlineVotingConsent, true),
+      ),
+    );
+  const [adultsRow] = await db
+    .select({
+      total: sql<number>`coalesce(sum(${petitionSubmissionsTable.adultsInHousehold}), 0)`,
+    })
+    .from(petitionSubmissionsTable)
+    .where(acceptedFilter);
+
+  const totalVotes = votesK50 + votesK100 + votesK150;
+  const percentage = (value: number) =>
+    totalVotes > 0 ? Math.round((value / totalVotes) * 1000) / 10 : 0;
+
+  let currentWinner: SubscriptionVoteValue | null = null;
+  if (totalVotes > 0) {
+    const highest = Math.max(votesK50, votesK100, votesK150);
+    const leaders: SubscriptionVoteValue[] = [];
+    if (votesK50 === highest) leaders.push("k50");
+    if (votesK100 === highest) leaders.push("k100");
+    if (votesK150 === highest) leaders.push("k150");
+    currentWinner = leaders.length === 1 ? leaders[0] : null;
+  }
+
+  return {
+    totalVotes,
+    votesK50,
+    votesK100,
+    votesK150,
+    percentageK50: percentage(votesK50),
+    percentageK100: percentage(votesK100),
+    percentageK150: percentage(votesK150),
+    currentWinner,
+    homeowners,
+    tenants,
+    totalAdults: adultsRow?.total ?? 0,
+    volunteers: volunteerRow?.value ?? 0,
+    onlineVotingConsent: onlineVotingRow?.value ?? 0,
+  };
 }
 
 router.get("/public/overview", async (_req, res): Promise<void> => {
@@ -254,6 +362,17 @@ router.get("/public/petition", async (_req, res): Promise<void> => {
   );
 });
 
+router.get("/public/poll", async (_req, res): Promise<void> => {
+  const [config] = await db
+    .select({ id: petitionConfigurationsTable.id })
+    .from(petitionConfigurationsTable)
+    .orderBy(desc(petitionConfigurationsTable.createdAt))
+    .limit(1);
+
+  const metrics = await computePollMetrics(config?.id);
+  res.json(GetPublicPollResultsResponse.parse(metrics));
+});
+
 router.get("/resident/application/me", async (req, res): Promise<void> => {
   const userId = await requireUserId(req, res);
   if (!userId) return;
@@ -347,6 +466,19 @@ router.post("/resident/application", async (req, res): Promise<void> => {
     res
       .status(201)
       .json(SubmitResidentApplicationResponse.parse(created));
+    void pushToGoogleSheets({
+      kind: "registration",
+      reference: created.reference,
+      submittedAt: created.submittedAt.toISOString(),
+      fields: {
+        fullName: input.fullName.trim(),
+        houseNumber: input.houseNumber.trim(),
+        streetOrZone: input.streetOrZone.trim(),
+        phone: input.phone.trim(),
+        email: input.email?.trim() || "",
+        status: created.status,
+      },
+    });
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
@@ -369,11 +501,14 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
   const parsed = SubmitPetitionConsentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
-      error: "Confirm each declaration before submitting your petition consent.",
+      error: "Confirm each declaration and complete every required field before submitting.",
     });
     return;
   }
-  if (Object.values(parsed.data).some((value) => !value)) {
+  const declarationsConfirmed = DECLARATION_KEYS.every(
+    (key) => parsed.data[key] === true,
+  );
+  if (!declarationsConfirmed) {
     res.status(400).json({
       error: "Confirm each declaration before submitting your petition consent.",
     });
@@ -427,7 +562,21 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
           petitionVersion: config.petitionVersion,
           constitutionVersion: config.constitutionVersion,
           declarationVersion: "1",
-          declarations: JSON.stringify(parsed.data),
+          declarations: JSON.stringify(
+            Object.fromEntries(
+              DECLARATION_KEYS.map((key) => [key, parsed.data[key]]),
+            ),
+          ),
+          subscriptionVote: parsed.data.subscriptionVote,
+          onlineVotingConsent: parsed.data.onlineVotingConsent,
+          willingToVolunteer: parsed.data.willingToVolunteer,
+          volunteerSkills: parsed.data.volunteerSkills?.trim() || null,
+          householdType: parsed.data.householdType,
+          adultsInHousehold: parsed.data.adultsInHousehold ?? null,
+          emergencyContactName: parsed.data.emergencyContactName.trim(),
+          emergencyContactPhone: parsed.data.emergencyContactPhone.trim(),
+          emergencyContactRelationship:
+            parsed.data.emergencyContactRelationship.trim(),
           status: "accepted",
           submittedAt,
         })
@@ -437,6 +586,7 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
           constitutionVersion: petitionSubmissionsTable.constitutionVersion,
           petitionVersion: petitionSubmissionsTable.petitionVersion,
           status: petitionSubmissionsTable.status,
+          subscriptionVote: petitionSubmissionsTable.subscriptionVote,
         });
       await tx.insert(auditLogsTable).values({
         actorUserId: userId,
@@ -446,11 +596,28 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
         metadata: JSON.stringify({
           petitionVersion: submission.petitionVersion,
           constitutionVersion: submission.constitutionVersion,
+          subscriptionVote: submission.subscriptionVote,
         }),
       });
       return submission;
     });
     res.status(201).json(SubmitPetitionConsentResponse.parse(result));
+    void pushToGoogleSheets({
+      kind: "petition",
+      reference: result.reference,
+      submittedAt: result.submittedAt.toISOString(),
+      fields: {
+        subscriptionVote: result.subscriptionVote,
+        onlineVotingConsent: parsed.data.onlineVotingConsent,
+        willingToVolunteer: parsed.data.willingToVolunteer,
+        volunteerSkills: parsed.data.volunteerSkills ?? "",
+        householdType: parsed.data.householdType,
+        adultsInHousehold: parsed.data.adultsInHousehold ?? "",
+        emergencyContactName: parsed.data.emergencyContactName,
+        emergencyContactPhone: parsed.data.emergencyContactPhone,
+        emergencyContactRelationship: parsed.data.emergencyContactRelationship,
+      },
+    });
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
@@ -477,6 +644,7 @@ router.get("/resident/petition/receipts", async (req, res): Promise<void> => {
       constitutionVersion: petitionSubmissionsTable.constitutionVersion,
       petitionVersion: petitionSubmissionsTable.petitionVersion,
       status: petitionSubmissionsTable.status,
+      subscriptionVote: petitionSubmissionsTable.subscriptionVote,
     })
     .from(petitionSubmissionsTable)
     .where(eq(petitionSubmissionsTable.userId, userId))
@@ -638,6 +806,21 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
       ? (acceptedPetitionSignatures / denominator) * 100
       : null;
 
+  const poll = await computePollMetrics(config?.id);
+  const [unverifiedRow] = await db
+    .select({ value: count() })
+    .from(petitionSubmissionsTable)
+    .where(
+      and(
+        eq(petitionSubmissionsTable.status, "accepted"),
+        isNull(petitionSubmissionsTable.verifiedAt),
+      ),
+    );
+  const [duplicateRow] = await db
+    .select({ value: count() })
+    .from(petitionSubmissionsTable)
+    .where(eq(petitionSubmissionsTable.duplicateFlag, true));
+
   res.json(
     GetAdminDashboardResponse.parse({
       totalApplications: totalApplications?.value ?? 0,
@@ -652,6 +835,17 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
       minimumQuorum,
       signaturesRemaining,
       thresholdReached,
+      totalVotes: poll.totalVotes,
+      votesK50: poll.votesK50,
+      votesK100: poll.votesK100,
+      votesK150: poll.votesK150,
+      currentWinner: poll.currentWinner,
+      homeowners: poll.homeowners,
+      tenants: poll.tenants,
+      volunteers: poll.volunteers,
+      onlineVotingConsent: poll.onlineVotingConsent,
+      unverifiedSignatures: unverifiedRow?.value ?? 0,
+      duplicateFlags: duplicateRow?.value ?? 0,
     }),
   );
 });
@@ -779,5 +973,203 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
   }
   res.json(ReviewMembershipApplicationResponse.parse(result));
 });
+
+router.get(
+  "/admin/petition/submissions",
+  async (req, res): Promise<void> => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const roles = await getAssociationRoles(userId);
+    if (!hasRole(roles, ...adminRoles)) {
+      res
+        .status(403)
+        .json({ error: "An authorized association role is required." });
+      return;
+    }
+    const query = GetAdminPetitionSubmissionsQueryParams.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ error: "Check the submission search and filters." });
+      return;
+    }
+
+    const filters: any[] = [];
+    if (query.data.status) {
+      filters.push(eq(petitionSubmissionsTable.status, query.data.status));
+    }
+    if (query.data.search?.trim()) {
+      const term = `%${query.data.search.trim()}%`;
+      filters.push(
+        or(
+          ilike(membershipApplicationsTable.fullName, term),
+          ilike(petitionSubmissionsTable.reference, term),
+          ilike(membershipApplicationsTable.houseNumber, term),
+          ilike(membershipApplicationsTable.streetOrZone, term),
+          ilike(membershipApplicationsTable.phone, term),
+        ),
+      );
+    }
+    const where = filters.length ? and(...filters) : undefined;
+    const join = eq(
+      petitionSubmissionsTable.userId,
+      membershipApplicationsTable.userId,
+    );
+
+    const [total] = await db
+      .select({ value: count() })
+      .from(petitionSubmissionsTable)
+      .leftJoin(membershipApplicationsTable, join)
+      .where(where);
+
+    const rows = await db
+      .select({
+        id: petitionSubmissionsTable.id,
+        reference: petitionSubmissionsTable.reference,
+        userId: petitionSubmissionsTable.userId,
+        fullName: membershipApplicationsTable.fullName,
+        houseNumber: membershipApplicationsTable.houseNumber,
+        streetOrZone: membershipApplicationsTable.streetOrZone,
+        phone: membershipApplicationsTable.phone,
+        subscriptionVote: petitionSubmissionsTable.subscriptionVote,
+        onlineVotingConsent: petitionSubmissionsTable.onlineVotingConsent,
+        willingToVolunteer: petitionSubmissionsTable.willingToVolunteer,
+        volunteerSkills: petitionSubmissionsTable.volunteerSkills,
+        householdType: petitionSubmissionsTable.householdType,
+        adultsInHousehold: petitionSubmissionsTable.adultsInHousehold,
+        emergencyContactName: petitionSubmissionsTable.emergencyContactName,
+        emergencyContactPhone: petitionSubmissionsTable.emergencyContactPhone,
+        emergencyContactRelationship:
+          petitionSubmissionsTable.emergencyContactRelationship,
+        status: petitionSubmissionsTable.status,
+        onMembersRegister: petitionSubmissionsTable.onMembersRegister,
+        duplicateFlag: petitionSubmissionsTable.duplicateFlag,
+        verifiedBy: petitionSubmissionsTable.verifiedBy,
+        verifiedAt: petitionSubmissionsTable.verifiedAt,
+        verificationNotes: petitionSubmissionsTable.verificationNotes,
+        submittedAt: petitionSubmissionsTable.submittedAt,
+      })
+      .from(petitionSubmissionsTable)
+      .leftJoin(membershipApplicationsTable, join)
+      .where(where)
+      .orderBy(desc(petitionSubmissionsTable.submittedAt))
+      .limit(query.data.pageSize)
+      .offset((query.data.page - 1) * query.data.pageSize);
+
+    const items = rows.map((row: any) => ({
+      ...row,
+      fullName: row.fullName ?? "Unknown resident",
+      houseNumber: row.houseNumber ?? "",
+      streetOrZone: row.streetOrZone ?? "",
+      phone: row.phone ?? "",
+    }));
+
+    res.json(
+      GetAdminPetitionSubmissionsResponse.parse({
+        items,
+        page: query.data.page,
+        pageSize: query.data.pageSize,
+        total: total?.value ?? 0,
+      }),
+    );
+  },
+);
+
+router.post(
+  "/admin/petition/submissions/:id/verify",
+  async (req, res): Promise<void> => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const roles = await getAssociationRoles(userId);
+    if (!hasRole(roles, ...reviewerRoles)) {
+      res
+        .status(403)
+        .json({ error: "Returning Officer or administrator access is required." });
+      return;
+    }
+
+    const params = VerifyPetitionSubmissionParams.safeParse(req.params);
+    const body = VerifyPetitionSubmissionBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({
+        error: "Provide a valid verification decision and a reason for the record.",
+      });
+      return;
+    }
+
+    const verifiedAt = new Date();
+    const result = await db.transaction(async (tx: any) => {
+      const [submission] = await tx
+        .update(petitionSubmissionsTable)
+        .set({
+          status: body.data.status,
+          onMembersRegister: body.data.onMembersRegister,
+          duplicateFlag: body.data.duplicateFlag,
+          verifiedBy: userId,
+          verifiedAt,
+          verificationNotes: body.data.reason.trim(),
+        })
+        .where(eq(petitionSubmissionsTable.id, params.data.id))
+        .returning({
+          id: petitionSubmissionsTable.id,
+          reference: petitionSubmissionsTable.reference,
+          userId: petitionSubmissionsTable.userId,
+          subscriptionVote: petitionSubmissionsTable.subscriptionVote,
+          onlineVotingConsent: petitionSubmissionsTable.onlineVotingConsent,
+          willingToVolunteer: petitionSubmissionsTable.willingToVolunteer,
+          volunteerSkills: petitionSubmissionsTable.volunteerSkills,
+          householdType: petitionSubmissionsTable.householdType,
+          adultsInHousehold: petitionSubmissionsTable.adultsInHousehold,
+          emergencyContactName: petitionSubmissionsTable.emergencyContactName,
+          emergencyContactPhone: petitionSubmissionsTable.emergencyContactPhone,
+          emergencyContactRelationship:
+            petitionSubmissionsTable.emergencyContactRelationship,
+          status: petitionSubmissionsTable.status,
+          onMembersRegister: petitionSubmissionsTable.onMembersRegister,
+          duplicateFlag: petitionSubmissionsTable.duplicateFlag,
+          verifiedBy: petitionSubmissionsTable.verifiedBy,
+          verifiedAt: petitionSubmissionsTable.verifiedAt,
+          verificationNotes: petitionSubmissionsTable.verificationNotes,
+          submittedAt: petitionSubmissionsTable.submittedAt,
+        });
+      if (!submission) return null;
+
+      const [application] = await tx
+        .select({
+          fullName: membershipApplicationsTable.fullName,
+          houseNumber: membershipApplicationsTable.houseNumber,
+          streetOrZone: membershipApplicationsTable.streetOrZone,
+          phone: membershipApplicationsTable.phone,
+        })
+        .from(membershipApplicationsTable)
+        .where(eq(membershipApplicationsTable.userId, submission.userId))
+        .limit(1);
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "petition.signature.verified",
+        recordType: "petition_submission",
+        recordId: submission.reference,
+        metadata: JSON.stringify({
+          status: submission.status,
+          onMembersRegister: submission.onMembersRegister,
+          duplicateFlag: submission.duplicateFlag,
+          reason: body.data.reason.trim(),
+        }),
+      });
+
+      return {
+        ...submission,
+        fullName: application?.fullName ?? "Unknown resident",
+        houseNumber: application?.houseNumber ?? "",
+        streetOrZone: application?.streetOrZone ?? "",
+        phone: application?.phone ?? "",
+      };
+    });
+    if (!result) {
+      res.status(404).json({ error: "Petition submission not found." });
+      return;
+    }
+    res.json(VerifyPetitionSubmissionResponse.parse(result));
+  },
+);
 
 export default router;

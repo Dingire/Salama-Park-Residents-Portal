@@ -11,6 +11,7 @@ import {
   useGetPublicDocuments, getGetPublicDocumentsQueryKey,
   useGetPublicAnnouncements, getGetPublicAnnouncementsQueryKey,
   useGetPublicPetition, getGetPublicPetitionQueryKey,
+  useGetPublicPollResults, getGetPublicPollResultsQueryKey,
   useGetMyResidentApplication, getGetMyResidentApplicationQueryKey,
   useSubmitResidentApplication, useSubmitPetitionConsent,
   useGetMyPetitionReceipts, getGetMyPetitionReceiptsQueryKey,
@@ -19,6 +20,8 @@ import {
   useGetAdminDashboard, getGetAdminDashboardQueryKey,
   useGetAdminApplications, getGetAdminApplicationsQueryKey,
   useReviewMembershipApplication,
+  useGetAdminPetitionSubmissions, getGetAdminPetitionSubmissionsQueryKey,
+  useVerifyPetitionSubmission,
 } from '@workspace/api-client-react';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
@@ -205,7 +208,7 @@ function PublicPage({ path }: { path: string }) {
     {path === '/about' && <div className="grid gap-8 md:grid-cols-[.8fr_1.2fr]"><div className="rounded-2xl bg-[#172b45] p-7 text-white"><Eyebrow inverse>What this portal is for</Eyebrow><p className="serif text-2xl font-semibold leading-snug">One dependable place for the steps that shape association governance.</p><p className="mt-4 text-sm leading-6 text-white/65">The portal distinguishes public information from private resident actions. Verification and future election processes follow formal association decisions.</p></div><div className="space-y-3">{[['01','Read','Approved documents and petition terms are available for residents to review.'],['02','Apply','Residents may submit an application for manual verification.'],['03','Participate','When enabled, eligible residents can provide consent against the exact published versions.'],['04','Follow','Notices, election status and results are published as they are formally confirmed.']].map(([n,h,t])=><div key={n} className="flex gap-5 rounded-xl border border-[#e2e0d9] bg-white p-5"><span className="font-mono text-xs text-[#477454]">{n}</span><div><h3 className="font-semibold text-[#1c2e44]">{h}</h3><p className="mt-1 text-sm leading-6 text-[#687486]">{t}</p></div></div>)}</div></div>}
     {path === '/documents' && <DocumentList docs={docs.data} loading={docs.isLoading} error={docs.isError} retry={() => docs.refetch()} />}
     {path === '/announcements' && <AnnouncementsList items={announcements.data} loading={announcements.isLoading} error={announcements.isError} retry={() => announcements.refetch()} />}
-    {path === '/petition' && <PetitionDetails petition={petition.data} loading={petition.isLoading} error={petition.isError} retry={() => petition.refetch()} />}
+    {path === '/petition' && <div className="space-y-6"><PetitionDetails petition={petition.data} loading={petition.isLoading} error={petition.isError} retry={() => petition.refetch()} /><LivePoll /></div>}
     {path === '/membership' && <MembershipEntry />}
     {path === '/elections' && <EmptyPanel title="Election setup has not been published" text="Election timelines, eligibility and candidate information will appear here after formal configuration. No dates or candidates are currently being stated." />}
     {path === '/results' && <EmptyPanel title="No verified results published" text="This page will display results only after an election is completed and the results are formally verified and published." />}
@@ -308,11 +311,11 @@ function ResidentPage({ path }: { path: string }) {
   const receipts = useGetMyPetitionReceipts({ query: { enabled: isSignedIn, queryKey: getGetMyPetitionReceiptsQueryKey() } });
   const receiptMutation = useSubmitPetitionConsent();
   const withdrawMutation = useWithdrawMyPetitionSignature();
-  const [consent, setConsent] = useState(false);
   const [receipt, setReceipt] = useState<{
     reference: string;
     constitutionVersion: string;
     petitionVersion: string;
+    subscriptionVote: string;
     submittedAt: Date | string;
   } | null>(null);
   const [error, setError] = useState('');
@@ -325,22 +328,14 @@ function ResidentPage({ path }: { path: string }) {
       item.constitutionVersion === petition.data?.constitutionVersion &&
       item.petitionVersion === petition.data?.petitionVersion,
     );
-    const onConsent = (event: FormEvent) => {
-      event.preventDefault();
+    const onConsent = (payload: PetitionPayload) => {
       setError('');
-      receiptMutation.mutate({ data: {
-        readConstitution: true,
-        consentToVersion: true,
-        truthfulResidency: true,
-        understandDataUse: true,
-        understandFoundingProvisions: true,
-        understandWithdrawal: true,
-        voluntary: true,
-      } }, {
+      receiptMutation.mutate({ data: payload }, {
         onSuccess: result => {
           setReceipt(result);
           queryClient.invalidateQueries({ queryKey: getGetMyPetitionReceiptsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetPublicOverviewQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetPublicPollResultsQueryKey() });
         },
         onError: apiError => setError(serverErrorMessage(apiError, 'Consent could not be recorded. Please try again.')),
       });
@@ -358,15 +353,11 @@ function ResidentPage({ path }: { path: string }) {
     };
     return <ResidentLayout heading={heading} description={description}><div className="max-w-3xl">
       {petition.isLoading ? <Skeleton rows={2} /> : petition.isError ? <ErrorLine retry={()=>petition.refetch()} /> : <PetitionDetails petition={petition.data} loading={false} error={false} retry={()=>petition.refetch()} />}
-      {receipt && <div className="mt-5"><Notice kind="success">Declaration received. Receipt {receipt.reference} · Constitution {receipt.constitutionVersion} · Petition {receipt.petitionVersion}</Notice></div>}
+      {receipt && <div className="mt-5"><Notice kind="success">Declaration received. Receipt {receipt.reference} · Constitution {receipt.constitutionVersion} · Petition {receipt.petitionVersion} · Subscription {receipt.subscriptionVote?.toUpperCase()}</Notice></div>}
       {active && !isVerified && <div className="mt-5"><Notice>Your application must be verified before you can sign this petition. <Link href="/resident/application" className="font-semibold underline">Check application status</Link>.</Notice></div>}
-      {active && isVerified && !matchingReceipt && <form onSubmit={onConsent} className="mt-5 rounded-2xl border border-[#e1dfd8] bg-white p-6">
-        <h3 className="font-semibold text-[#1b2e45]">Declaration of consent</h3>
-        <p className="mt-2 text-sm leading-6 text-[#657184]">I have read the published constitution and petition, understand the relevant founding provisions and withdrawal terms, confirm my residency truthfully, and consent voluntarily to the exact versions shown.</p>
-        <label className="mt-4 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={consent} onChange={event=>setConsent(event.target.checked)} className="mt-1 accent-[#315f43]" />I confirm this declaration and understand how my information is used.</label>
-        {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
-        <button disabled={!consent || receiptMutation.isPending} className="btn-primary mt-5 disabled:opacity-50">{receiptMutation.isPending ? 'Recording…' : 'Submit declaration'} <ArrowRight size={15} /></button>
-      </form>}
+      {active && isVerified && !matchingReceipt && <div className="mt-5">
+        <PetitionConsentForm isPending={receiptMutation.isPending} onSubmit={onConsent} />
+      </div>}
       {matchingReceipt && petition.data?.signingEnabled && <div className="mt-5 rounded-2xl border border-[#e1dfd8] bg-white p-5">
         <p className="font-semibold text-[#1b2e45]">Active signature · Receipt {matchingReceipt.reference}</p>
         <p className="mt-2 text-sm text-[#687486]">Your declaration is recorded for Constitution {matchingReceipt.constitutionVersion} and petition {matchingReceipt.petitionVersion}. Your selections are not involved in this petition receipt.</p>
@@ -381,11 +372,168 @@ function ResidentPage({ path }: { path: string }) {
   if (path === '/resident/voting') return <ResidentLayout heading={heading} description={description}><EmptyPanel title="Voting is not configured" text="No election, candidate list or voting window has been formally published. Eligibility and voting actions will appear when configured." /></ResidentLayout>;
   if (path === '/resident/receipts') return <ResidentLayout heading={heading} description={description}><div className="grid gap-4 md:grid-cols-2">
     <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Membership application</h2>{app.isLoading ? <Skeleton rows={1}/> : app.isError ? <ErrorLine retry={()=>app.refetch()}/> : app.data?.application ? <div className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Application {app.data.application.reference}</p><p className="mt-2 text-sm text-[#687486]">Status: {app.data.application.status}</p><p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(app.data.application.submittedAt).toLocaleDateString()}</p></div> : <EmptyPanel title="No application receipt" text="Once you submit an application, its status and reference appear here." />}</div>
-    <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Petition declarations</h2>{receipts.isLoading ? <Skeleton rows={1}/> : receipts.isError ? <ErrorLine retry={()=>receipts.refetch()}/> : receipts.data?.length ? <div className="space-y-3">{receipts.data.map(item=><div key={item.reference} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Receipt {item.reference}</p><p className="mt-2 text-sm text-[#687486]">Constitution {item.constitutionVersion} · Petition {item.petitionVersion}</p><p className="mt-1 text-xs text-[#87918e]">{item.status} · Submitted {new Date(item.submittedAt).toLocaleDateString()}</p></div>)}</div> : <EmptyPanel title="No petition receipts" text="A private receipt appears here after your declaration is recorded." />}</div>
+    <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Petition declarations</h2>{receipts.isLoading ? <Skeleton rows={1}/> : receipts.isError ? <ErrorLine retry={()=>receipts.refetch()}/> : receipts.data?.length ? <div className="space-y-3">{receipts.data.map(item=><div key={item.reference} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Receipt {item.reference}</p><p className="mt-2 text-sm text-[#687486]">Constitution {item.constitutionVersion} · Petition {item.petitionVersion}</p>{item.subscriptionVote && <p className="mt-1 text-sm font-semibold text-[#315f43]">Subscription: {item.subscriptionVote.toUpperCase()} per month</p>}<p className="mt-1 text-xs text-[#87918e]">{item.status} · Submitted {new Date(item.submittedAt).toLocaleDateString()}</p></div>)}</div> : <EmptyPanel title="No petition receipts" text="A private receipt appears here after your declaration is recorded." />}</div>
   </div></ResidentLayout>;
   if (path === '/resident/notifications') return <ResidentLayout heading={heading} description={description}><EmptyPanel title="No notifications yet" text="Published association notices and private status updates will appear here when available." /></ResidentLayout>;
   return <ResidentLayout heading={heading} description={description}><ProfileView /></ResidentLayout>;
 }
+function LivePoll() {
+  const poll = useGetPublicPollResults({ query: { queryKey: getGetPublicPollResultsQueryKey() } });
+  if (poll.isLoading) return <Skeleton rows={1} />;
+  if (poll.isError) return <ErrorLine retry={() => poll.refetch()} />;
+  const data = poll.data;
+  if (!data || data.totalVotes === 0) {
+    return <EmptyPanel title="No subscription votes yet" text="The monthly subscription poll opens as soon as residents begin signing. Results update live." />;
+  }
+  const options = [
+    { key: 'k50', label: 'K50.00', votes: data.votesK50, pct: data.percentageK50 },
+    { key: 'k100', label: 'K100.00', votes: data.votesK100, pct: data.percentageK100 },
+    { key: 'k150', label: 'K150.00', votes: data.votesK150, pct: data.percentageK150 },
+  ] as const;
+  const winner = options.find(o => o.key === data.currentWinner);
+  return <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#477454]"><span className="size-2 animate-pulse rounded-full bg-[#6a9c71]" />Live subscription poll</div>
+    <h3 className="serif mt-3 text-2xl font-bold text-[#192d45]">Monthly subscription</h3>
+    <p className="mt-2 text-sm leading-6 text-[#647083]">Residents choose the amount they are willing to commit each month. {winner ? <><strong>{winner.label}</strong> currently leads with {winner.pct}% of {data.totalVotes} votes.</> : <>It is currently a tie across {data.totalVotes} votes.</>}</p>
+    <div className="mt-5 space-y-4">
+      {options.map(option => <div key={option.key}>
+        <div className="flex items-baseline justify-between text-sm">
+          <span className="font-semibold text-[#263950]">{option.label}</span>
+          <span className="text-[#687486]">{option.votes} votes · {option.pct}%</span>
+        </div>
+        <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-[#eceee9]">
+          <div className={`h-full rounded-full ${option.key === data.currentWinner ? 'bg-[#315f43]' : 'bg-[#9dbba1]'}`} style={{ width: `${option.pct}%` }} />
+        </div>
+      </div>)}
+    </div>
+    <div className="mt-6 grid grid-cols-2 gap-3 border-t border-[#e8e6df] pt-5 sm:grid-cols-4">
+      {[['Households', data.totalVotes], ['Homeowners', data.homeowners], ['Tenants', data.tenants], ['Volunteers', data.volunteers]].map(([label, value]) => <div key={String(label)}><p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#87918e]">{label}</p><p className="mt-1 text-lg font-semibold text-[#293c52]">{value}</p></div>)}
+    </div>
+  </div>;
+}
+
+type PetitionPayload = {
+  readConstitution: boolean;
+  consentToVersion: boolean;
+  truthfulResidency: boolean;
+  understandDataUse: boolean;
+  understandFoundingProvisions: boolean;
+  understandWithdrawal: boolean;
+  voluntary: boolean;
+  subscriptionVote: 'k50' | 'k100' | 'k150';
+  onlineVotingConsent: boolean;
+  willingToVolunteer: boolean;
+  volunteerSkills?: string | null;
+  householdType: 'homeowner' | 'tenant';
+  adultsInHousehold?: number | null;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
+};
+
+function PetitionConsentForm({ isPending, onSubmit }: { isPending: boolean; onSubmit: (data: PetitionPayload) => void }) {
+  const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
+  const [householdType, setHouseholdType] = useState<'homeowner' | 'tenant'>('homeowner');
+  const [adultsInHousehold, setAdultsInHousehold] = useState('');
+  const [subscriptionVote, setSubscriptionVote] = useState<'' | 'k50' | 'k100' | 'k150'>('');
+  const [onlineVotingConsent, setOnlineVotingConsent] = useState(false);
+  const [willingToVolunteer, setWillingToVolunteer] = useState(false);
+  const [volunteerSkills, setVolunteerSkills] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [emergencyContactRelationship, setEmergencyContactRelationship] = useState('');
+
+  const adults = adultsInHousehold.trim() === '' ? null : Math.max(1, Math.min(30, Math.round(Number(adultsInHousehold) || 1)));
+  const valid = declarationConfirmed && subscriptionVote !== '' &&
+    emergencyContactName.trim().length >= 2 &&
+    emergencyContactPhone.trim().length >= 5 &&
+    emergencyContactRelationship.trim().length >= 2;
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!valid) return;
+    onSubmit({
+      readConstitution: true,
+      consentToVersion: true,
+      truthfulResidency: true,
+      understandDataUse: true,
+      understandFoundingProvisions: true,
+      understandWithdrawal: true,
+      voluntary: true,
+      subscriptionVote,
+      onlineVotingConsent,
+      willingToVolunteer,
+      volunteerSkills: volunteerSkills.trim() || null,
+      householdType,
+      adultsInHousehold: adults,
+      emergencyContactName: emergencyContactName.trim(),
+      emergencyContactPhone: emergencyContactPhone.trim(),
+      emergencyContactRelationship: emergencyContactRelationship.trim(),
+    });
+  };
+
+  const options = [['k50', 'K50.00'], ['k100', 'K100.00'], ['k150', 'K150.00']] as const;
+
+  return <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h3 className="font-semibold text-[#1b2e45]">1 · Declaration of consent</h3>
+      <p className="mt-2 text-sm leading-6 text-[#657184]">I have read the published constitution and petition, understand the relevant founding provisions and withdrawal terms, confirm my residency truthfully, and consent voluntarily to the exact versions shown.</p>
+      <label className="mt-4 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={declarationConfirmed} onChange={e => setDeclarationConfirmed(e.target.checked)} className="mt-1 accent-[#315f43]" />I confirm this declaration and understand how my information is used.</label>
+    </div>
+
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h3 className="font-semibold text-[#1b2e45]">2 · Household information</h3>
+      <fieldset className="mt-3">
+        <legend className="text-sm font-medium text-[#35485c]">Do you own or rent your home?</legend>
+        <div className="mt-2 flex gap-4">
+          <label className="flex items-center gap-2 text-sm text-[#536174]"><input type="radio" name="householdType" checked={householdType === 'homeowner'} onChange={() => setHouseholdType('homeowner')} className="accent-[#315f43]" />Homeowner</label>
+          <label className="flex items-center gap-2 text-sm text-[#536174]"><input type="radio" name="householdType" checked={householdType === 'tenant'} onChange={() => setHouseholdType('tenant')} className="accent-[#315f43]" />Tenant</label>
+        </div>
+      </fieldset>
+      <label className="mt-4 block text-sm font-medium text-[#35485c]">Number of adults in your household <span className="font-normal text-[#87918e]">(optional)</span>
+        <input type="number" min={1} max={30} value={adultsInHousehold} onChange={e => setAdultsInHousehold(e.target.value)} className="field mt-1.5" placeholder="e.g. 2" />
+      </label>
+    </div>
+
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h3 className="font-semibold text-[#1b2e45]">3 · Monthly subscription poll</h3>
+      <p className="mt-2 text-sm leading-6 text-[#657184]">Choose the monthly subscription amount you are willing to commit to. This helps the association plan services.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        {options.map(([value, label]) => <label key={value} className={`flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-5 text-center transition-colors ${subscriptionVote === value ? 'border-[#315f43] bg-[#eef6ee]' : 'border-[#e1dfd8] bg-white hover:border-[#b8c9b7]'}`}>
+          <input type="radio" name="subscriptionVote" className="sr-only" checked={subscriptionVote === value} onChange={() => setSubscriptionVote(value)} />
+          <span className="font-semibold text-[#1b2e45]">{label}<span className="block text-xs font-normal text-[#87918e]">per month</span></span>
+        </label>)}
+      </div>
+    </div>
+
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h3 className="font-semibold text-[#1b2e45]">4 · Online voting consent</h3>
+      <p className="mt-2 text-sm leading-6 text-[#657184]">The association is moving to online voting for adoption and first elections. Consent to receive a secure online ballot.</p>
+      <label className="mt-4 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={onlineVotingConsent} onChange={e => setOnlineVotingConsent(e.target.checked)} className="mt-1 accent-[#315f43]" />I consent to vote online where online voting is used.</label>
+    </div>
+
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h3 className="font-semibold text-[#1b2e45]">5 · Volunteer &amp; skills</h3>
+      <label className="mt-3 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={willingToVolunteer} onChange={e => setWillingToVolunteer(e.target.checked)} className="mt-1 accent-[#315f43]" />I am willing to volunteer my time for association activities.</label>
+      <label className="mt-4 block text-sm font-medium text-[#35485c]">Skills or areas you can help with <span className="font-normal text-[#87918e]">(optional)</span>
+        <textarea value={volunteerSkills} onChange={e => setVolunteerSkills(e.target.value)} maxLength={500} rows={2} className="field mt-1.5" placeholder="e.g. IT, events, finances, gardening" />
+      </label>
+    </div>
+
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h3 className="font-semibold text-[#1b2e45]">6 · Emergency contact</h3>
+      <p className="mt-2 text-sm leading-6 text-[#657184]">A contact the association can reach in case of an emergency involving your household.</p>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm font-medium text-[#35485c]">Contact name <span className="text-[#9a4a43]">*</span><input value={emergencyContactName} onChange={e => setEmergencyContactName(e.target.value)} required minLength={2} className="field mt-1.5" /></label>
+        <label className="block text-sm font-medium text-[#35485c]">Phone number <span className="text-[#9a4a43]">*</span><input value={emergencyContactPhone} onChange={e => setEmergencyContactPhone(e.target.value)} required minLength={5} className="field mt-1.5" /></label>
+        <label className="block text-sm font-medium text-[#35485c] sm:col-span-2">Relationship <span className="text-[#9a4a43]">*</span><input value={emergencyContactRelationship} onChange={e => setEmergencyContactRelationship(e.target.value)} required minLength={2} className="field mt-1.5" placeholder="e.g. spouse, parent, neighbour" /></label>
+      </div>
+    </div>
+
+    <button type="submit" disabled={!valid || isPending} className="btn-primary disabled:opacity-50">{isPending ? 'Recording…' : 'Submit declaration'} <ArrowRight size={15} /></button>
+  </form>;
+}
+
 function ResidentCard({href,icon,title,text}:{href:string;icon:ReactNode;title:string;text:string}) { return <Link href={href} className="group rounded-2xl border border-[#e1dfd8] bg-white p-5 transition-colors hover:border-[#b8c9b7]"><span className="grid size-10 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]">{icon}</span><h2 className="mt-4 font-semibold text-[#1c2e44]">{title}</h2><p className="mt-1 text-sm leading-6 text-[#687486]">{text}</p><span className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#477454]">Open <ArrowRight size={13}/></span></Link>; }
 function ProfileView() { const {user,isLoaded}=useUser(); if(!isLoaded) return <Skeleton rows={1}/>; return <div className="max-w-2xl rounded-2xl border border-[#e1dfd8] bg-white p-6"><div className="flex items-center gap-4"><span className="grid size-12 place-items-center rounded-full bg-[#eaf1e8] text-[#477454]"><UserRound size={22}/></span><div><p className="font-semibold text-[#1c2e44]">{user?.fullName || 'Resident account'}</p><p className="text-sm text-[#687486]">{user?.primaryEmailAddress?.emailAddress || 'Email not available'}</p></div></div><div className="mt-6 border-t border-[#e8e6df] pt-5"><Notice>Your account profile is separate from association verification. Verified membership status is determined by the association review process.</Notice></div></div>; }
 
@@ -406,6 +554,7 @@ function AdminPage({path}:{path:string}) {
         <nav className="grid grid-cols-2 gap-1 rounded-xl border border-[#e1dfd8] bg-white p-3 sm:grid-cols-3 lg:block">{adminNav.map(([label,href])=><Link key={href} href={href} className={`block rounded-lg px-3 py-2.5 text-xs font-semibold ${href===path?'bg-[#eaf1e8] text-[#315f43]':'text-[#596778] hover:bg-[#f4f3ed]'}`}>{label}</Link>)}</nav>
         <div className="min-w-0">
           {path==='/admin/dashboard' ? <AdminDashboard/>
+          :path==='/admin/verifications' ? <AdminPetitionPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPollResultsQueryKey()});}}/>
           :isManagementPage ? <AdminApplicationsPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});}}/>
           :<div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">This workflow is not configured.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">No approved official records are available for this page. Configuration and publishing actions are not enabled until the Association supplies and approves the required rules and source documents.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/documents" className="btn-secondary">View public documents <ArrowUpRight size={14}/></Link><Link href="/announcements" className="btn-secondary">Public notices <ArrowUpRight size={14}/></Link></div></div>}
         </div>
@@ -427,8 +576,27 @@ function AdminDashboard() {
     ['Verified applications',data.verifiedApplications],
     ['Rejected applications',data.rejectedApplications],
     ['Accepted petition signatures',data.acceptedPetitionSignatures],
+    ['Unverified signatures',data.unverifiedSignatures],
+    ['Duplicate flags',data.duplicateFlags],
   ];
-  return <div><div className="mb-5 rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-bold uppercase tracking-wider text-[#647083]">Petition status</p><p className="mt-2 text-lg font-semibold capitalize text-[#1c2e44]">{data.petitionStatus.replaceAll('-',' ')}</p><p className="mt-2 text-sm text-[#687486]">Verified register denominator: {data.verifiedDenominator??'not established'}</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{rows.map(([label,value])=><div key={label} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-semibold text-[#738090]">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight text-[#192d45]">{value}</p></div>)}</div></div>;
+  const pollRows=[
+    ['Total subscription votes',data.totalVotes],
+    ['K50 votes',data.votesK50],
+    ['K100 votes',data.votesK100],
+    ['K150 votes',data.votesK150],
+    ['Homeowners',data.homeowners],
+    ['Tenants',data.tenants],
+    ['Volunteers',data.volunteers],
+    ['Consented to online voting',data.onlineVotingConsent],
+  ];
+  const winner=data.currentWinner?data.currentWinner.toUpperCase():null;
+  return <div>
+    <div className="mb-5 rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-bold uppercase tracking-wider text-[#647083]">Petition status</p><p className="mt-2 text-lg font-semibold capitalize text-[#1c2e44]">{data.petitionStatus.replaceAll('-',' ')}</p><p className="mt-2 text-sm text-[#687486]">Verified register denominator: {data.verifiedDenominator??'not established'}{winner?` · Subscription leading option: ${winner}`:''}</p></div>
+    <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-wider text-[#647083]">Membership &amp; signatures</p>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label,value])=><div key={label} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-semibold text-[#738090]">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight text-[#192d45]">{value}</p></div>)}</div>
+    <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-wider text-[#647083]">Subscription poll &amp; household</p>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{pollRows.map(([label,value])=><div key={label} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-semibold text-[#738090]">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight text-[#192d45]">{value}</p></div>)}</div>
+  </div>;
 }
 
 function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChanged:()=>void}) {
@@ -456,6 +624,71 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
       <div className="space-y-3">{applications.data.items.map(item=><article key={item.id} className="rounded-xl border border-[#e1dfd8] bg-white p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-semibold text-[#1c2e44]">{item.fullName}</p><p className="mt-1 text-xs text-[#687486]">Reference {item.reference} · {item.status.replaceAll('-',' ')}</p><p className="mt-2 text-sm text-[#536174]">{item.houseNumber}, {item.streetOrZone}</p><p className="text-sm text-[#536174]">{item.phone}{item.email?` · ${item.email}`:''}</p><p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(item.submittedAt).toLocaleString()}</p>{item.decisionReason&&<p className="mt-2 text-sm text-[#687486]">Decision note: {item.decisionReason}</p>}</div></div>
         {canReview&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><label className="block text-xs font-semibold text-[#536174]">Decision reason<input value={reasons[item.id]??''} onChange={event=>setReasons(current=>({...current,[item.id]:event.target.value}))} className="field mt-1.5" maxLength={1000} /></label><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={review.isPending} onClick={()=>submitReview(item.id,'verified')} className="btn-primary disabled:opacity-50">Verify</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item.id,'clarification-requested')} className="btn-secondary disabled:opacity-50">Request clarification</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item.id,'rejected')} className="btn-secondary disabled:opacity-50">Reject</button></div></div>}
+      </article>)}</div>}
+  </section>;
+}
+
+function AdminPetitionPanel({ canReview, onChanged }: { canReview: boolean; onChanged: () => void }) {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'accepted' | 'disputed' | 'rejected' | 'withdrawn'>('');
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [register, setRegister] = useState<Record<string, boolean>>({});
+  const [duplicate, setDuplicate] = useState<Record<string, boolean>>({});
+  const [actionError, setActionError] = useState('');
+  const params = { page: 1, pageSize: 25, search: search.trim() || undefined, status: statusFilter || undefined };
+  const submissions = useGetAdminPetitionSubmissions(params, { query: { queryKey: getGetAdminPetitionSubmissionsQueryKey(params) } });
+  const verify = useVerifyPetitionSubmission();
+  const submitVerify = (id: string, decision: 'accepted' | 'disputed' | 'rejected') => {
+    const reason = reasons[id]?.trim() || '';
+    setActionError('');
+    if (reason.length < 3) { setActionError('Enter a reason of at least 3 characters before recording a decision.'); return; }
+    verify.mutate({ id, data: { status: decision, onMembersRegister: register[id] ?? false, duplicateFlag: duplicate[id] ?? false, reason } }, {
+      onSuccess: () => {
+        setReasons(current => ({ ...current, [id]: '' }));
+        queryClient.invalidateQueries({ queryKey: getGetAdminPetitionSubmissionsQueryKey(params) });
+        onChanged();
+      },
+      onError: error => setActionError(serverErrorMessage(error, 'The verification could not be recorded. Please try again.')),
+    });
+  };
+  const voteLabel = (v: string | null) => v ? v.toUpperCase() : '—';
+  return <section>
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div><h2 className="font-semibold text-[#1c2e44]">Petition signature verification</h2><p className="mt-1 text-xs text-[#687486]">Returning Officers check each signature against the members register before it counts toward the threshold.</p></div>
+      <div className="flex gap-2">
+        <input aria-label="Search petition signatures" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, reference or house" className="field sm:max-w-xs" />
+        <select aria-label="Filter by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="field sm:max-w-[160px]">
+          <option value="">All statuses</option>
+          <option value="accepted">Accepted</option>
+          <option value="disputed">Disputed</option>
+          <option value="rejected">Rejected</option>
+          <option value="withdrawn">Withdrawn</option>
+        </select>
+      </div>
+    </div>
+    {actionError && <div className="mb-4"><Notice kind="error">{actionError}</Notice></div>}
+    {submissions.isLoading ? <Skeleton rows={3} /> : submissions.isError ? <ErrorLine retry={() => submissions.refetch()} /> : !submissions.data?.items.length ? <EmptyPanel title="No signatures found" text="No matching petition signatures have been submitted yet." /> :
+      <div className="space-y-3">{submissions.data.items.map(item => <article key={item.id} className="rounded-xl border border-[#e1dfd8] bg-white p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="font-semibold text-[#1c2e44]">{item.fullName}</p>
+            <p className="mt-1 text-xs text-[#687486]">Reference {item.reference} · {item.status.replaceAll('-', ' ')}</p>
+            <p className="mt-2 text-sm text-[#536174]">{item.houseNumber}, {item.streetOrZone} · {item.phone}</p>
+            <p className="mt-2 text-xs text-[#87918e]">Subscription <strong className="text-[#315f43]">{voteLabel(item.subscriptionVote)}</strong> · {item.householdType ?? '—'}{item.adultsInHousehold ? ` · ${item.adultsInHousehold} adult(s)` : ''} · {item.onlineVotingConsent ? 'Online voting: yes' : 'Online voting: no'} · {item.willingToVolunteer ? 'Volunteer' : 'No volunteer'}{item.volunteerSkills ? ` (${item.volunteerSkills})` : ''}</p>
+            <p className="mt-1 text-xs text-[#87918e]">Emergency: {item.emergencyContactName} · {item.emergencyContactPhone} ({item.emergencyContactRelationship})</p>
+            <p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(item.submittedAt).toLocaleString()}{item.verifiedAt ? ` · Verified ${new Date(item.verifiedAt).toLocaleString()}` : ''}</p>
+            {item.verificationNotes && <p className="mt-2 text-sm text-[#687486]">Last note: {item.verificationNotes}</p>}
+          </div>
+        </div>
+        {canReview && <div className="mt-4 border-t border-[#e8e6df] pt-4">
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-xs font-semibold text-[#536174]"><input type="checkbox" checked={register[item.id] ?? item.onMembersRegister ?? false} onChange={e => setRegister(current => ({ ...current, [item.id]: e.target.checked }))} className="accent-[#315f43]" />On members register</label>
+            <label className="flex items-center gap-2 text-xs font-semibold text-[#536174]"><input type="checkbox" checked={duplicate[item.id] ?? item.duplicateFlag ?? false} onChange={e => setDuplicate(current => ({ ...current, [item.id]: e.target.checked }))} className="accent-[#9a4a43]" />Possible duplicate</label>
+          </div>
+          <label className="mt-3 block text-xs font-semibold text-[#536174]">Verification note<input value={reasons[item.id] ?? item.verificationNotes ?? ''} onChange={e => setReasons(current => ({ ...current, [item.id]: e.target.value }))} className="field mt-1.5" maxLength={1000} placeholder="Reason for this decision" /></label>
+          <div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={verify.isPending} onClick={() => submitVerify(item.id, 'accepted')} className="btn-primary disabled:opacity-50">Accept</button><button type="button" disabled={verify.isPending} onClick={() => submitVerify(item.id, 'disputed')} className="btn-secondary disabled:opacity-50">Flag as disputed</button><button type="button" disabled={verify.isPending} onClick={() => submitVerify(item.id, 'rejected')} className="btn-secondary disabled:opacity-50">Reject</button></div>
+        </div>}
       </article>)}</div>}
   </section>;
 }

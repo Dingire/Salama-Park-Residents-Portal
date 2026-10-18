@@ -38,6 +38,17 @@ export const petitionSignatureStatus = pgEnum("petition_signature_status", [
   "withdrawn",
 ]);
 
+export const subscriptionVote = pgEnum("subscription_vote", [
+  "k50",
+  "k100",
+  "k150",
+]);
+
+export const householdType = pgEnum("household_type", [
+  "homeowner",
+  "tenant",
+]);
+
 export const documentPublicationStatus = pgEnum(
   "document_publication_status",
   ["draft", "approved", "published", "archived"],
@@ -209,6 +220,20 @@ export const petitionSubmissionsTable = pgTable(
     constitutionVersion: text("constitution_version").notNull(),
     declarationVersion: text("declaration_version").notNull(),
     declarations: text("declarations").notNull(),
+    subscriptionVote: subscriptionVote("subscription_vote"),
+    onlineVotingConsent: boolean("online_voting_consent").notNull().default(false),
+    willingToVolunteer: boolean("willing_to_volunteer").notNull().default(false),
+    volunteerSkills: text("volunteer_skills"),
+    householdType: householdType("household_type"),
+    adultsInHousehold: integer("adults_in_household"),
+    emergencyContactName: text("emergency_contact_name"),
+    emergencyContactPhone: text("emergency_contact_phone"),
+    emergencyContactRelationship: text("emergency_contact_relationship"),
+    onMembersRegister: boolean("on_members_register"),
+    duplicateFlag: boolean("duplicate_flag"),
+    verifiedBy: text("verified_by"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verificationNotes: text("verification_notes"),
     status: petitionSignatureStatus("status").notNull().default("accepted"),
     submittedAt: timestamp("submitted_at", { withTimezone: true })
       .notNull()

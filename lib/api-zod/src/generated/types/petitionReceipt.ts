@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PetitionReceiptStatus } from './petitionReceiptStatus';
+import type { PetitionReceiptSubscriptionVote } from './petitionReceiptSubscriptionVote';
 
 export interface PetitionReceipt {
   reference: string;
@@ -13,4 +14,5 @@ export interface PetitionReceipt {
   constitutionVersion: string;
   petitionVersion: string;
   status: PetitionReceiptStatus;
+  subscriptionVote: PetitionReceiptSubscriptionVote;
 }

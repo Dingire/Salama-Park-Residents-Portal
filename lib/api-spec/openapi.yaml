@@ -80,6 +80,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicPetition"
+  /public/poll:
+    get:
+      operationId: getPublicPollResults
+      tags: [public]
+      summary: Get the live monthly subscription poll and household tallies
+      responses:
+        "200":
+          description: Aggregate poll results with no personal data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPollResults"
   /resident/application:
     post:
       operationId: submitResidentApplication
@@ -286,6 +298,72 @@ paths:
           description: Returning Officer or administrator role required
         "404":
           description: Application not found
+  /admin/petition/submissions:
+    get:
+      operationId: getAdminPetitionSubmissions
+      tags: [resident]
+      summary: Page through petition submissions for verification review
+      security:
+        - clerkSession: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [accepted, disputed, rejected, withdrawn]
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 120 }
+      responses:
+        "200":
+          description: A paginated list of petition submissions for review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPetitionSubmissionPage"
+        "401":
+          description: Authentication required
+        "403":
+          description: Returning Officer or administrator role required
+  /admin/petition/submissions/{id}/verify:
+    post:
+      operationId: verifyPetitionSubmission
+      tags: [resident]
+      summary: Record a verification decision for a petition signature
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PetitionVerificationInput"
+      responses:
+        "200":
+          description: Updated verification decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPetitionSubmission"
+        "400":
+          description: Invalid verification decision or missing reason
+        "401":
+          description: Authentication required
+        "403":
+          description: Returning Officer or administrator role required
+        "404":
+          description: Submission not found
 components:
   securitySchemes:
     clerkSession:
@@ -448,6 +526,13 @@ components:
         - understandFoundingProvisions
         - understandWithdrawal
         - voluntary
+        - subscriptionVote
+        - onlineVotingConsent
+        - willingToVolunteer
+        - householdType
+        - emergencyContactName
+        - emergencyContactPhone
+        - emergencyContactRelationship
       properties:
         readConstitution: { type: boolean }
         consentToVersion: { type: boolean }
@@ -456,18 +541,34 @@ components:
         understandFoundingProvisions: { type: boolean }
         understandWithdrawal: { type: boolean }
         voluntary: { type: boolean }
+        subscriptionVote:
+          type: string
+          enum: [k50, k100, k150]
+        onlineVotingConsent: { type: boolean }
+        willingToVolunteer: { type: boolean }
+        volunteerSkills: { type: ["string", "null"], maxLength: 500 }
+        householdType:
+          type: string
+          enum: [homeowner, tenant]
+        adultsInHousehold: { type: ["integer", "null"], minimum: 1, maximum: 30 }
+        emergencyContactName: { type: string, minLength: 2, maxLength: 160 }
+        emergencyContactPhone: { type: string, minLength: 5, maxLength: 40 }
+        emergencyContactRelationship: { type: string, minLength: 2, maxLength: 80 }
     PetitionReceipt:
       type: object
-      required: [reference, submittedAt, constitutionVersion, petitionVersion, status]
+      required: [reference, submittedAt, constitutionVersion, petitionVersion, status, subscriptionVote]
       properties:
         reference: { type: string }
         submittedAt: { type: string, format: date-time }
         constitutionVersion: { type: string }
         petitionVersion: { type: string }
         status: { type: string, enum: [accepted] }
+        subscriptionVote:
+          type: string
+          enum: [k50, k100, k150]
     ResidentPetitionReceipt:
       type: object
-      required: [reference, submittedAt, constitutionVersion, petitionVersion, status]
+      required: [reference, submittedAt, constitutionVersion, petitionVersion, status, subscriptionVote]
       properties:
         reference: { type: string }
         submittedAt: { type: string, format: date-time }
@@ -476,6 +577,9 @@ components:
         status:
           type: string
           enum: [accepted, disputed, rejected, withdrawn]
+        subscriptionVote:
+          type: ["string", "null"]
+          enum: [k50, k100, k150]
     PetitionWithdrawal:
       type: object
       required: [reference, status, withdrawnAt]
@@ -504,6 +608,17 @@ components:
         - minimumQuorum
         - signaturesRemaining
         - thresholdReached
+        - totalVotes
+        - votesK50
+        - votesK100
+        - votesK150
+        - currentWinner
+        - homeowners
+        - tenants
+        - volunteers
+        - onlineVotingConsent
+        - unverifiedSignatures
+        - duplicateFlags
       properties:
         totalApplications: { type: integer, minimum: 0 }
         pendingApplications: { type: integer, minimum: 0 }
@@ -516,6 +631,19 @@ components:
         minimumQuorum: { type: ["integer", "null"], minimum: 0 }
         signaturesRemaining: { type: ["integer", "null"], minimum: 0 }
         thresholdReached: { type: ["boolean", "null"] }
+        totalVotes: { type: integer, minimum: 0 }
+        votesK50: { type: integer, minimum: 0 }
+        votesK100: { type: integer, minimum: 0 }
+        votesK150: { type: integer, minimum: 0 }
+        currentWinner:
+          type: ["string", "null"]
+          enum: [k50, k100, k150]
+        homeowners: { type: integer, minimum: 0 }
+        tenants: { type: integer, minimum: 0 }
+        volunteers: { type: integer, minimum: 0 }
+        onlineVotingConsent: { type: integer, minimum: 0 }
+        unverifiedSignatures: { type: integer, minimum: 0 }
+        duplicateFlags: { type: integer, minimum: 0 }
         petitionStatus:
           type: string
           enum: [not-configured, scheduled, open, closed]
@@ -553,5 +681,114 @@ components:
         status:
           type: string
           enum: [clarification-requested, verified, rejected]
+        reason: { type: string, minLength: 3, maxLength: 1000 }
+    PublicPollResults:
+      type: object
+      required:
+        - totalVotes
+        - votesK50
+        - votesK100
+        - votesK150
+        - percentageK50
+        - percentageK100
+        - percentageK150
+        - currentWinner
+        - homeowners
+        - tenants
+        - totalAdults
+        - volunteers
+        - onlineVotingConsent
+      properties:
+        totalVotes: { type: integer, minimum: 0 }
+        votesK50: { type: integer, minimum: 0 }
+        votesK100: { type: integer, minimum: 0 }
+        votesK150: { type: integer, minimum: 0 }
+        percentageK50: { type: number }
+        percentageK100: { type: number }
+        percentageK150: { type: number }
+        currentWinner:
+          type: ["string", "null"]
+          enum: [k50, k100, k150]
+        homeowners: { type: integer, minimum: 0 }
+        tenants: { type: integer, minimum: 0 }
+        totalAdults: { type: integer, minimum: 0 }
+        volunteers: { type: integer, minimum: 0 }
+        onlineVotingConsent: { type: integer, minimum: 0 }
+    AdminPetitionSubmission:
+      type: object
+      required:
+        - id
+        - reference
+        - userId
+        - fullName
+        - houseNumber
+        - streetOrZone
+        - phone
+        - subscriptionVote
+        - onlineVotingConsent
+        - willingToVolunteer
+        - volunteerSkills
+        - householdType
+        - adultsInHousehold
+        - emergencyContactName
+        - emergencyContactPhone
+        - emergencyContactRelationship
+        - status
+        - onMembersRegister
+        - duplicateFlag
+        - verifiedBy
+        - verifiedAt
+        - verificationNotes
+        - submittedAt
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        userId: { type: string }
+        fullName: { type: string }
+        houseNumber: { type: string }
+        streetOrZone: { type: string }
+        phone: { type: string }
+        subscriptionVote:
+          type: ["string", "null"]
+          enum: [k50, k100, k150]
+        onlineVotingConsent: { type: boolean }
+        willingToVolunteer: { type: boolean }
+        volunteerSkills: { type: ["string", "null"] }
+        householdType:
+          type: ["string", "null"]
+          enum: [homeowner, tenant]
+        adultsInHousehold: { type: ["integer", "null"] }
+        emergencyContactName: { type: ["string", "null"] }
+        emergencyContactPhone: { type: ["string", "null"] }
+        emergencyContactRelationship: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [accepted, disputed, rejected, withdrawn]
+        onMembersRegister: { type: ["boolean", "null"] }
+        duplicateFlag: { type: ["boolean", "null"] }
+        verifiedBy: { type: ["string", "null"] }
+        verifiedAt: { type: ["string", "null"], format: date-time }
+        verificationNotes: { type: ["string", "null"] }
+        submittedAt: { type: string, format: date-time }
+    AdminPetitionSubmissionPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPetitionSubmission"
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    PetitionVerificationInput:
+      type: object
+      required: [status, onMembersRegister, duplicateFlag, reason]
+      properties:
+        status:
+          type: string
+          enum: [accepted, disputed, rejected]
+        onMembersRegister: { type: boolean }
+        duplicateFlag: { type: boolean }
         reason: { type: string, minLength: 3, maxLength: 1000 }
 

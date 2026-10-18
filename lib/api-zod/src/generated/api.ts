@@ -22,14 +22,28 @@ export const HealthCheckResponse = zod.object({
  */
 export const getPublicOverviewResponseAcceptedPetitionSignaturesMin = 0;
 
+export const getPublicOverviewResponseRejectedPetitionSignaturesMin = 0;
+
+export const getPublicOverviewResponseDisputedPetitionSignaturesMin = 0;
+
+export const getPublicOverviewResponseWithdrawnPetitionSignaturesMin = 0;
+
 
 
 export const GetPublicOverviewResponse = zod.object({
   "membershipVerificationProgress": zod.boolean(),
   "denominator": zod.number().int().nullable(),
   "acceptedPetitionSignatures": zod.number().int().min(getPublicOverviewResponseAcceptedPetitionSignaturesMin),
+  "rejectedPetitionSignatures": zod.number().int().min(getPublicOverviewResponseRejectedPetitionSignaturesMin),
+  "disputedPetitionSignatures": zod.number().int().min(getPublicOverviewResponseDisputedPetitionSignaturesMin),
+  "withdrawnPetitionSignatures": zod.number().int().min(getPublicOverviewResponseWithdrawnPetitionSignaturesMin),
   "petitionStatus": zod.enum(['not-configured', 'scheduled', 'open', 'closed']),
-  "proposedThreshold": zod.number().int().nullable()
+  "proposedThreshold": zod.number().int().nullable(),
+  "twoThirdsThreshold": zod.number().int().nullable(),
+  "minimumQuorum": zod.number().int().nullable(),
+  "signaturesRemaining": zod.number().int().nullable(),
+  "thresholdReached": zod.boolean().nullable(),
+  "supportPercentage": zod.number().nullable()
 })
 
 
@@ -72,6 +86,46 @@ export const GetPublicPetitionResponse = zod.object({
   "petitionVersion": zod.string().nullable(),
   "signingEnabled": zod.boolean(),
   "proposedThreshold": zod.number().int().nullable()
+})
+
+
+/**
+ * @summary Get the live monthly subscription poll and household tallies
+ */
+export const getPublicPollResultsResponseTotalVotesMin = 0;
+
+export const getPublicPollResultsResponseVotesK50Min = 0;
+
+export const getPublicPollResultsResponseVotesK100Min = 0;
+
+export const getPublicPollResultsResponseVotesK150Min = 0;
+
+export const getPublicPollResultsResponseHomeownersMin = 0;
+
+export const getPublicPollResultsResponseTenantsMin = 0;
+
+export const getPublicPollResultsResponseTotalAdultsMin = 0;
+
+export const getPublicPollResultsResponseVolunteersMin = 0;
+
+export const getPublicPollResultsResponseOnlineVotingConsentMin = 0;
+
+
+
+export const GetPublicPollResultsResponse = zod.object({
+  "totalVotes": zod.number().int().min(getPublicPollResultsResponseTotalVotesMin),
+  "votesK50": zod.number().int().min(getPublicPollResultsResponseVotesK50Min),
+  "votesK100": zod.number().int().min(getPublicPollResultsResponseVotesK100Min),
+  "votesK150": zod.number().int().min(getPublicPollResultsResponseVotesK150Min),
+  "percentageK50": zod.number(),
+  "percentageK100": zod.number(),
+  "percentageK150": zod.number(),
+  "currentWinner": zod.enum(['k50', 'k100', 'k150']).nullable(),
+  "homeowners": zod.number().int().min(getPublicPollResultsResponseHomeownersMin),
+  "tenants": zod.number().int().min(getPublicPollResultsResponseTenantsMin),
+  "totalAdults": zod.number().int().min(getPublicPollResultsResponseTotalAdultsMin),
+  "volunteers": zod.number().int().min(getPublicPollResultsResponseVolunteersMin),
+  "onlineVotingConsent": zod.number().int().min(getPublicPollResultsResponseOnlineVotingConsentMin)
 })
 
 
@@ -130,6 +184,21 @@ export const GetMyResidentApplicationResponse = zod.object({
 /**
  * @summary Submit an authenticated petition declaration for the exact published versions
  */
+export const submitPetitionConsentBodyVolunteerSkillsMax = 500;
+
+export const submitPetitionConsentBodyAdultsInHouseholdMax = 30;
+
+export const submitPetitionConsentBodyEmergencyContactNameMin = 2;
+export const submitPetitionConsentBodyEmergencyContactNameMax = 160;
+
+export const submitPetitionConsentBodyEmergencyContactPhoneMin = 5;
+export const submitPetitionConsentBodyEmergencyContactPhoneMax = 40;
+
+export const submitPetitionConsentBodyEmergencyContactRelationshipMin = 2;
+export const submitPetitionConsentBodyEmergencyContactRelationshipMax = 80;
+
+
+
 export const SubmitPetitionConsentBody = zod.object({
   "readConstitution": zod.boolean(),
   "consentToVersion": zod.boolean(),
@@ -137,7 +206,16 @@ export const SubmitPetitionConsentBody = zod.object({
   "understandDataUse": zod.boolean(),
   "understandFoundingProvisions": zod.boolean(),
   "understandWithdrawal": zod.boolean(),
-  "voluntary": zod.boolean()
+  "voluntary": zod.boolean(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']),
+  "onlineVotingConsent": zod.boolean(),
+  "willingToVolunteer": zod.boolean(),
+  "volunteerSkills": zod.string().max(submitPetitionConsentBodyVolunteerSkillsMax).nullish(),
+  "householdType": zod.enum(['homeowner', 'tenant']),
+  "adultsInHousehold": zod.number().int().min(1).max(submitPetitionConsentBodyAdultsInHouseholdMax).nullish(),
+  "emergencyContactName": zod.string().min(submitPetitionConsentBodyEmergencyContactNameMin).max(submitPetitionConsentBodyEmergencyContactNameMax),
+  "emergencyContactPhone": zod.string().min(submitPetitionConsentBodyEmergencyContactPhoneMin).max(submitPetitionConsentBodyEmergencyContactPhoneMax),
+  "emergencyContactRelationship": zod.string().min(submitPetitionConsentBodyEmergencyContactRelationshipMin).max(submitPetitionConsentBodyEmergencyContactRelationshipMax)
 })
 
 export const SubmitPetitionConsentResponse = zod.object({
@@ -145,7 +223,8 @@ export const SubmitPetitionConsentResponse = zod.object({
   "submittedAt": zod.coerce.date(),
   "constitutionVersion": zod.string(),
   "petitionVersion": zod.string(),
-  "status": zod.enum(['accepted'])
+  "status": zod.enum(['accepted']),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150'])
 })
 
 
@@ -157,7 +236,8 @@ export const GetMyPetitionReceiptsResponseItem = zod.object({
   "submittedAt": zod.coerce.date(),
   "constitutionVersion": zod.string(),
   "petitionVersion": zod.string(),
-  "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn'])
+  "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable()
 })
 export const GetMyPetitionReceiptsResponse = zod.array(GetMyPetitionReceiptsResponseItem)
 
@@ -198,6 +278,32 @@ export const getAdminDashboardResponseAcceptedPetitionSignaturesMin = 0;
 
 export const getAdminDashboardResponseVerifiedDenominatorMin = 0;
 
+export const getAdminDashboardResponseTwoThirdsThresholdMin = 0;
+
+export const getAdminDashboardResponseMinimumQuorumMin = 0;
+
+export const getAdminDashboardResponseSignaturesRemainingMin = 0;
+
+export const getAdminDashboardResponseTotalVotesMin = 0;
+
+export const getAdminDashboardResponseVotesK50Min = 0;
+
+export const getAdminDashboardResponseVotesK100Min = 0;
+
+export const getAdminDashboardResponseVotesK150Min = 0;
+
+export const getAdminDashboardResponseHomeownersMin = 0;
+
+export const getAdminDashboardResponseTenantsMin = 0;
+
+export const getAdminDashboardResponseVolunteersMin = 0;
+
+export const getAdminDashboardResponseOnlineVotingConsentMin = 0;
+
+export const getAdminDashboardResponseUnverifiedSignaturesMin = 0;
+
+export const getAdminDashboardResponseDuplicateFlagsMin = 0;
+
 
 
 export const GetAdminDashboardResponse = zod.object({
@@ -208,6 +314,21 @@ export const GetAdminDashboardResponse = zod.object({
   "rejectedApplications": zod.number().int().min(getAdminDashboardResponseRejectedApplicationsMin),
   "acceptedPetitionSignatures": zod.number().int().min(getAdminDashboardResponseAcceptedPetitionSignaturesMin),
   "verifiedDenominator": zod.number().int().min(getAdminDashboardResponseVerifiedDenominatorMin).nullable(),
+  "twoThirdsThreshold": zod.number().int().min(getAdminDashboardResponseTwoThirdsThresholdMin).nullable(),
+  "minimumQuorum": zod.number().int().min(getAdminDashboardResponseMinimumQuorumMin).nullable(),
+  "signaturesRemaining": zod.number().int().min(getAdminDashboardResponseSignaturesRemainingMin).nullable(),
+  "thresholdReached": zod.boolean().nullable(),
+  "totalVotes": zod.number().int().min(getAdminDashboardResponseTotalVotesMin),
+  "votesK50": zod.number().int().min(getAdminDashboardResponseVotesK50Min),
+  "votesK100": zod.number().int().min(getAdminDashboardResponseVotesK100Min),
+  "votesK150": zod.number().int().min(getAdminDashboardResponseVotesK150Min),
+  "currentWinner": zod.enum(['k50', 'k100', 'k150']).nullable(),
+  "homeowners": zod.number().int().min(getAdminDashboardResponseHomeownersMin),
+  "tenants": zod.number().int().min(getAdminDashboardResponseTenantsMin),
+  "volunteers": zod.number().int().min(getAdminDashboardResponseVolunteersMin),
+  "onlineVotingConsent": zod.number().int().min(getAdminDashboardResponseOnlineVotingConsentMin),
+  "unverifiedSignatures": zod.number().int().min(getAdminDashboardResponseUnverifiedSignaturesMin),
+  "duplicateFlags": zod.number().int().min(getAdminDashboardResponseDuplicateFlagsMin),
   "petitionStatus": zod.enum(['not-configured', 'scheduled', 'open', 'closed'])
 })
 
@@ -278,6 +399,103 @@ export const ReviewMembershipApplicationResponse = zod.object({
   "status": zod.enum(['pending-verification', 'clarification-requested', 'verified', 'rejected']),
   "submittedAt": zod.coerce.date(),
   "decisionReason": zod.string().nullable()
+})
+
+
+/**
+ * @summary Page through petition submissions for verification review
+ */
+export const getAdminPetitionSubmissionsQueryPageDefault = 1;
+
+export const getAdminPetitionSubmissionsQueryPageSizeDefault = 25;
+export const getAdminPetitionSubmissionsQueryPageSizeMax = 100;
+
+export const getAdminPetitionSubmissionsQuerySearchMax = 120;
+
+
+
+export const GetAdminPetitionSubmissionsQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).default(getAdminPetitionSubmissionsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getAdminPetitionSubmissionsQueryPageSizeMax).default(getAdminPetitionSubmissionsQueryPageSizeDefault),
+  "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']).optional(),
+  "search": zod.coerce.string().max(getAdminPetitionSubmissionsQuerySearchMax).optional()
+})
+
+export const GetAdminPetitionSubmissionsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string(),
+  "userId": zod.string(),
+  "fullName": zod.string(),
+  "houseNumber": zod.string(),
+  "streetOrZone": zod.string(),
+  "phone": zod.string(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable(),
+  "onlineVotingConsent": zod.boolean(),
+  "willingToVolunteer": zod.boolean(),
+  "volunteerSkills": zod.string().nullable(),
+  "householdType": zod.enum(['homeowner', 'tenant']).nullable(),
+  "adultsInHousehold": zod.number().int().nullable(),
+  "emergencyContactName": zod.string().nullable(),
+  "emergencyContactPhone": zod.string().nullable(),
+  "emergencyContactRelationship": zod.string().nullable(),
+  "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']),
+  "onMembersRegister": zod.boolean().nullable(),
+  "duplicateFlag": zod.boolean().nullable(),
+  "verifiedBy": zod.string().nullable(),
+  "verifiedAt": zod.coerce.date().nullable(),
+  "verificationNotes": zod.string().nullable(),
+  "submittedAt": zod.coerce.date()
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+
+
+/**
+ * @summary Record a verification decision for a petition signature
+ */
+export const VerifyPetitionSubmissionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const verifyPetitionSubmissionBodyReasonMin = 3;
+export const verifyPetitionSubmissionBodyReasonMax = 1000;
+
+
+
+export const VerifyPetitionSubmissionBody = zod.object({
+  "status": zod.enum(['accepted', 'disputed', 'rejected']),
+  "onMembersRegister": zod.boolean(),
+  "duplicateFlag": zod.boolean(),
+  "reason": zod.string().min(verifyPetitionSubmissionBodyReasonMin).max(verifyPetitionSubmissionBodyReasonMax)
+})
+
+export const VerifyPetitionSubmissionResponse = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string(),
+  "userId": zod.string(),
+  "fullName": zod.string(),
+  "houseNumber": zod.string(),
+  "streetOrZone": zod.string(),
+  "phone": zod.string(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable(),
+  "onlineVotingConsent": zod.boolean(),
+  "willingToVolunteer": zod.boolean(),
+  "volunteerSkills": zod.string().nullable(),
+  "householdType": zod.enum(['homeowner', 'tenant']).nullable(),
+  "adultsInHousehold": zod.number().int().nullable(),
+  "emergencyContactName": zod.string().nullable(),
+  "emergencyContactPhone": zod.string().nullable(),
+  "emergencyContactRelationship": zod.string().nullable(),
+  "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']),
+  "onMembersRegister": zod.boolean().nullable(),
+  "duplicateFlag": zod.boolean().nullable(),
+  "verifiedBy": zod.string().nullable(),
+  "verifiedAt": zod.coerce.date().nullable(),
+  "verificationNotes": zod.string().nullable(),
+  "submittedAt": zod.coerce.date()
 })
 
 

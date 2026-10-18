@@ -24,16 +24,21 @@ import type {
   AdminApplication,
   AdminApplicationPage,
   AdminDashboard,
+  AdminPetitionSubmission,
+  AdminPetitionSubmissionPage,
   ApplicationReviewInput,
   GetAdminApplicationsParams,
+  GetAdminPetitionSubmissionsParams,
   HealthStatus,
   PetitionConsentInput,
   PetitionReceipt,
+  PetitionVerificationInput,
   PetitionWithdrawal,
   PublicAnnouncement,
   PublicDocument,
   PublicOverview,
   PublicPetition,
+  PublicPollResults,
   ResidentApplication,
   ResidentApplicationInput,
   ResidentApplicationStatus,
@@ -441,6 +446,83 @@ export function useGetPublicPetition<TData = Awaited<ReturnType<typeof getPublic
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPublicPetitionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPublicPollResultsUrl = () => {
+
+
+
+
+  return `/api/public/poll`
+}
+
+/**
+ * @summary Get the live monthly subscription poll and household tallies
+ */
+export const getPublicPollResults = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublicPollResults> => {
+
+  return customFetch<PublicPollResults>(getGetPublicPollResultsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicPollResultsQueryKey = () => {
+    return [
+    `/api/public/poll`
+    ] as const;
+    }
+
+
+export const getGetPublicPollResultsQueryOptions = <TData = Awaited<ReturnType<typeof getPublicPollResults>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicPollResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicPollResultsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicPollResults>>> = ({ signal }) => getPublicPollResults({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicPollResults>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicPollResultsQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicPollResults>>>
+export type GetPublicPollResultsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the live monthly subscription poll and household tallies
+ */
+
+export function useGetPublicPollResults<TData = Awaited<ReturnType<typeof getPublicPollResults>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicPollResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicPollResultsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1182,5 +1264,178 @@ export const useReviewMembershipApplication = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReviewMembershipApplicationMutationOptions(options));
+    }
+
+export const getGetAdminPetitionSubmissionsUrl = (params?: GetAdminPetitionSubmissionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/petition/submissions?${stringifiedParams}` : `/api/admin/petition/submissions`
+}
+
+/**
+ * @summary Page through petition submissions for verification review
+ */
+export const getAdminPetitionSubmissions = async (params?: GetAdminPetitionSubmissionsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminPetitionSubmissionPage> => {
+
+  return customFetch<AdminPetitionSubmissionPage>(getGetAdminPetitionSubmissionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminPetitionSubmissionsQueryKey = (params?: GetAdminPetitionSubmissionsParams,) => {
+    return [
+    `/api/admin/petition/submissions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminPetitionSubmissionsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminPetitionSubmissions>>, TError = ErrorType<void>>(params?: GetAdminPetitionSubmissionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPetitionSubmissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminPetitionSubmissionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPetitionSubmissions>>> = ({ signal }) => getAdminPetitionSubmissions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPetitionSubmissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminPetitionSubmissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminPetitionSubmissions>>>
+export type GetAdminPetitionSubmissionsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Page through petition submissions for verification review
+ */
+
+export function useGetAdminPetitionSubmissions<TData = Awaited<ReturnType<typeof getAdminPetitionSubmissions>>, TError = ErrorType<void>>(
+ params?: GetAdminPetitionSubmissionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPetitionSubmissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminPetitionSubmissionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getVerifyPetitionSubmissionUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/petition/submissions/${id}/verify`
+}
+
+/**
+ * @summary Record a verification decision for a petition signature
+ */
+export const verifyPetitionSubmission = async (id: string,
+    petitionVerificationInput: PetitionVerificationInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminPetitionSubmission> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminPetitionSubmission>(getVerifyPetitionSubmissionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(petitionVerificationInput)
+  }
+);}
+
+
+
+
+
+export const getVerifyPetitionSubmissionMutationKey = () => ['verifyPetitionSubmission'] as const;
+
+export const getVerifyPetitionSubmissionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPetitionSubmission>>, TError,VerifyPetitionSubmissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyPetitionSubmission>>, TError,VerifyPetitionSubmissionMutationVariables, TContext> => {
+
+const mutationKey = getVerifyPetitionSubmissionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyPetitionSubmission>>, VerifyPetitionSubmissionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  verifyPetitionSubmission(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyPetitionSubmissionMutationResult = NonNullable<Awaited<ReturnType<typeof verifyPetitionSubmission>>>
+    export type VerifyPetitionSubmissionMutationBody = BodyType<PetitionVerificationInput>
+    export type VerifyPetitionSubmissionMutationError = ErrorType<void>
+    export type VerifyPetitionSubmissionMutationVariables = {id: string;data: BodyType<PetitionVerificationInput>}
+
+    /**
+ * @summary Record a verification decision for a petition signature
+ */
+export const useVerifyPetitionSubmission = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPetitionSubmission>>, TError,VerifyPetitionSubmissionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyPetitionSubmission>>,
+        TError,
+        VerifyPetitionSubmissionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyPetitionSubmissionMutationOptions(options));
     }
 

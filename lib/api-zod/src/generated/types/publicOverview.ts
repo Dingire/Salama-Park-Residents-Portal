@@ -13,7 +13,23 @@ export interface PublicOverview {
   denominator: number | null;
   /** @minimum 0 */
   acceptedPetitionSignatures: number;
+  /** @minimum 0 */
+  rejectedPetitionSignatures: number;
+  /** @minimum 0 */
+  disputedPetitionSignatures: number;
+  /** @minimum 0 */
+  withdrawnPetitionSignatures: number;
   petitionStatus: PublicOverviewPetitionStatus;
   /** @nullable */
   proposedThreshold: number | null;
+  /** @nullable */
+  twoThirdsThreshold: number | null;
+  /** @nullable */
+  minimumQuorum: number | null;
+  /** @nullable */
+  signaturesRemaining: number | null;
+  /** @nullable */
+  thresholdReached: boolean | null;
+  /** @nullable */
+  supportPercentage: number | null;
 }

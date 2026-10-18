@@ -5,6 +5,7 @@
  * Salama Park Residents Association governance portal API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminDashboardCurrentWinner } from './adminDashboardCurrentWinner';
 import type { AdminDashboardPetitionStatus } from './adminDashboardPetitionStatus';
 
 export interface AdminDashboard {
@@ -25,5 +26,44 @@ export interface AdminDashboard {
      * @nullable
      */
   verifiedDenominator: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  twoThirdsThreshold: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  minimumQuorum: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  signaturesRemaining: number | null;
+  /** @nullable */
+  thresholdReached: boolean | null;
+  /** @minimum 0 */
+  totalVotes: number;
+  /** @minimum 0 */
+  votesK50: number;
+  /** @minimum 0 */
+  votesK100: number;
+  /** @minimum 0 */
+  votesK150: number;
+  /** @nullable */
+  currentWinner: AdminDashboardCurrentWinner;
+  /** @minimum 0 */
+  homeowners: number;
+  /** @minimum 0 */
+  tenants: number;
+  /** @minimum 0 */
+  volunteers: number;
+  /** @minimum 0 */
+  onlineVotingConsent: number;
+  /** @minimum 0 */
+  unverifiedSignatures: number;
+  /** @minimum 0 */
+  duplicateFlags: number;
   petitionStatus: AdminDashboardPetitionStatus;
 }

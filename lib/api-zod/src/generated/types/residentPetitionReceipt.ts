@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ResidentPetitionReceiptStatus } from './residentPetitionReceiptStatus';
+import type { ResidentPetitionReceiptSubscriptionVote } from './residentPetitionReceiptSubscriptionVote';
 
 export interface ResidentPetitionReceipt {
   reference: string;
@@ -13,4 +14,6 @@ export interface ResidentPetitionReceipt {
   constitutionVersion: string;
   petitionVersion: string;
   status: ResidentPetitionReceiptStatus;
+  /** @nullable */
+  subscriptionVote: ResidentPetitionReceiptSubscriptionVote;
 }

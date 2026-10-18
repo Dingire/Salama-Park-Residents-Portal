@@ -25,9 +25,25 @@ export interface PublicOverview {
   denominator: number | null;
   /** @minimum 0 */
   acceptedPetitionSignatures: number;
+  /** @minimum 0 */
+  rejectedPetitionSignatures: number;
+  /** @minimum 0 */
+  disputedPetitionSignatures: number;
+  /** @minimum 0 */
+  withdrawnPetitionSignatures: number;
   petitionStatus: PublicOverviewPetitionStatus;
   /** @nullable */
   proposedThreshold: number | null;
+  /** @nullable */
+  twoThirdsThreshold: number | null;
+  /** @nullable */
+  minimumQuorum: number | null;
+  /** @nullable */
+  signaturesRemaining: number | null;
+  /** @nullable */
+  thresholdReached: boolean | null;
+  /** @nullable */
+  supportPercentage: number | null;
 }
 
 export interface PublicDocument {
@@ -142,6 +158,23 @@ export interface ResidentApplicationStatus {
   application: ResidentApplication | null;
 }
 
+export type PetitionConsentInputSubscriptionVote = typeof PetitionConsentInputSubscriptionVote[keyof typeof PetitionConsentInputSubscriptionVote];
+
+
+export const PetitionConsentInputSubscriptionVote = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
+export type PetitionConsentInputHouseholdType = typeof PetitionConsentInputHouseholdType[keyof typeof PetitionConsentInputHouseholdType];
+
+
+export const PetitionConsentInputHouseholdType = {
+  homeowner: 'homeowner',
+  tenant: 'tenant',
+} as const;
+
 export interface PetitionConsentInput {
   readConstitution: boolean;
   consentToVersion: boolean;
@@ -150,6 +183,36 @@ export interface PetitionConsentInput {
   understandFoundingProvisions: boolean;
   understandWithdrawal: boolean;
   voluntary: boolean;
+  subscriptionVote: PetitionConsentInputSubscriptionVote;
+  onlineVotingConsent: boolean;
+  willingToVolunteer: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  volunteerSkills?: string | null;
+  householdType: PetitionConsentInputHouseholdType;
+  /**
+     * @minimum 1
+     * @maximum 30
+     * @nullable
+     */
+  adultsInHousehold?: number | null;
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  emergencyContactName: string;
+  /**
+     * @minLength 5
+     * @maxLength 40
+     */
+  emergencyContactPhone: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  emergencyContactRelationship: string;
 }
 
 export type PetitionReceiptStatus = typeof PetitionReceiptStatus[keyof typeof PetitionReceiptStatus];
@@ -159,12 +222,22 @@ export const PetitionReceiptStatus = {
   accepted: 'accepted',
 } as const;
 
+export type PetitionReceiptSubscriptionVote = typeof PetitionReceiptSubscriptionVote[keyof typeof PetitionReceiptSubscriptionVote];
+
+
+export const PetitionReceiptSubscriptionVote = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
 export interface PetitionReceipt {
   reference: string;
   submittedAt: string;
   constitutionVersion: string;
   petitionVersion: string;
   status: PetitionReceiptStatus;
+  subscriptionVote: PetitionReceiptSubscriptionVote;
 }
 
 export type ResidentPetitionReceiptStatus = typeof ResidentPetitionReceiptStatus[keyof typeof ResidentPetitionReceiptStatus];
@@ -177,12 +250,26 @@ export const ResidentPetitionReceiptStatus = {
   withdrawn: 'withdrawn',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ResidentPetitionReceiptSubscriptionVote = typeof ResidentPetitionReceiptSubscriptionVote[keyof typeof ResidentPetitionReceiptSubscriptionVote] | null;
+
+
+export const ResidentPetitionReceiptSubscriptionVote = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
 export interface ResidentPetitionReceipt {
   reference: string;
   submittedAt: string;
   constitutionVersion: string;
   petitionVersion: string;
   status: ResidentPetitionReceiptStatus;
+  /** @nullable */
+  subscriptionVote: ResidentPetitionReceiptSubscriptionVote;
 }
 
 export type PetitionWithdrawalStatus = typeof PetitionWithdrawalStatus[keyof typeof PetitionWithdrawalStatus];
@@ -203,6 +290,18 @@ export interface AdminAccess {
   /** @nullable */
   role: string | null;
 }
+
+/**
+ * @nullable
+ */
+export type AdminDashboardCurrentWinner = typeof AdminDashboardCurrentWinner[keyof typeof AdminDashboardCurrentWinner] | null;
+
+
+export const AdminDashboardCurrentWinner = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
 
 export type AdminDashboardPetitionStatus = typeof AdminDashboardPetitionStatus[keyof typeof AdminDashboardPetitionStatus];
 
@@ -232,6 +331,45 @@ export interface AdminDashboard {
      * @nullable
      */
   verifiedDenominator: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  twoThirdsThreshold: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  minimumQuorum: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  signaturesRemaining: number | null;
+  /** @nullable */
+  thresholdReached: boolean | null;
+  /** @minimum 0 */
+  totalVotes: number;
+  /** @minimum 0 */
+  votesK50: number;
+  /** @minimum 0 */
+  votesK100: number;
+  /** @minimum 0 */
+  votesK150: number;
+  /** @nullable */
+  currentWinner: AdminDashboardCurrentWinner;
+  /** @minimum 0 */
+  homeowners: number;
+  /** @minimum 0 */
+  tenants: number;
+  /** @minimum 0 */
+  volunteers: number;
+  /** @minimum 0 */
+  onlineVotingConsent: number;
+  /** @minimum 0 */
+  unverifiedSignatures: number;
+  /** @minimum 0 */
+  duplicateFlags: number;
   petitionStatus: AdminDashboardPetitionStatus;
 }
 
@@ -285,6 +423,142 @@ export interface ApplicationReviewInput {
   reason: string;
 }
 
+/**
+ * @nullable
+ */
+export type PublicPollResultsCurrentWinner = typeof PublicPollResultsCurrentWinner[keyof typeof PublicPollResultsCurrentWinner] | null;
+
+
+export const PublicPollResultsCurrentWinner = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
+export interface PublicPollResults {
+  /** @minimum 0 */
+  totalVotes: number;
+  /** @minimum 0 */
+  votesK50: number;
+  /** @minimum 0 */
+  votesK100: number;
+  /** @minimum 0 */
+  votesK150: number;
+  percentageK50: number;
+  percentageK100: number;
+  percentageK150: number;
+  /** @nullable */
+  currentWinner: PublicPollResultsCurrentWinner;
+  /** @minimum 0 */
+  homeowners: number;
+  /** @minimum 0 */
+  tenants: number;
+  /** @minimum 0 */
+  totalAdults: number;
+  /** @minimum 0 */
+  volunteers: number;
+  /** @minimum 0 */
+  onlineVotingConsent: number;
+}
+
+/**
+ * @nullable
+ */
+export type AdminPetitionSubmissionSubscriptionVote = typeof AdminPetitionSubmissionSubscriptionVote[keyof typeof AdminPetitionSubmissionSubscriptionVote] | null;
+
+
+export const AdminPetitionSubmissionSubscriptionVote = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminPetitionSubmissionHouseholdType = typeof AdminPetitionSubmissionHouseholdType[keyof typeof AdminPetitionSubmissionHouseholdType] | null;
+
+
+export const AdminPetitionSubmissionHouseholdType = {
+  homeowner: 'homeowner',
+  tenant: 'tenant',
+} as const;
+
+export type AdminPetitionSubmissionStatus = typeof AdminPetitionSubmissionStatus[keyof typeof AdminPetitionSubmissionStatus];
+
+
+export const AdminPetitionSubmissionStatus = {
+  accepted: 'accepted',
+  disputed: 'disputed',
+  rejected: 'rejected',
+  withdrawn: 'withdrawn',
+} as const;
+
+export interface AdminPetitionSubmission {
+  id: string;
+  reference: string;
+  userId: string;
+  fullName: string;
+  houseNumber: string;
+  streetOrZone: string;
+  phone: string;
+  /** @nullable */
+  subscriptionVote: AdminPetitionSubmissionSubscriptionVote;
+  onlineVotingConsent: boolean;
+  willingToVolunteer: boolean;
+  /** @nullable */
+  volunteerSkills: string | null;
+  /** @nullable */
+  householdType: AdminPetitionSubmissionHouseholdType;
+  /** @nullable */
+  adultsInHousehold: number | null;
+  /** @nullable */
+  emergencyContactName: string | null;
+  /** @nullable */
+  emergencyContactPhone: string | null;
+  /** @nullable */
+  emergencyContactRelationship: string | null;
+  status: AdminPetitionSubmissionStatus;
+  /** @nullable */
+  onMembersRegister: boolean | null;
+  /** @nullable */
+  duplicateFlag: boolean | null;
+  /** @nullable */
+  verifiedBy: string | null;
+  /** @nullable */
+  verifiedAt: string | null;
+  /** @nullable */
+  verificationNotes: string | null;
+  submittedAt: string;
+}
+
+export interface AdminPetitionSubmissionPage {
+  items: AdminPetitionSubmission[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export type PetitionVerificationInputStatus = typeof PetitionVerificationInputStatus[keyof typeof PetitionVerificationInputStatus];
+
+
+export const PetitionVerificationInputStatus = {
+  accepted: 'accepted',
+  disputed: 'disputed',
+  rejected: 'rejected',
+} as const;
+
+export interface PetitionVerificationInput {
+  status: PetitionVerificationInputStatus;
+  onMembersRegister: boolean;
+  duplicateFlag: boolean;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
 export type GetAdminApplicationsParams = {
 /**
  * @minimum 1
@@ -310,5 +584,32 @@ export const GetAdminApplicationsStatus = {
   'clarification-requested': 'clarification-requested',
   verified: 'verified',
   rejected: 'rejected',
+} as const;
+
+export type GetAdminPetitionSubmissionsParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+status?: GetAdminPetitionSubmissionsStatus;
+/**
+ * @maxLength 120
+ */
+search?: string;
+};
+
+export type GetAdminPetitionSubmissionsStatus = typeof GetAdminPetitionSubmissionsStatus[keyof typeof GetAdminPetitionSubmissionsStatus];
+
+
+export const GetAdminPetitionSubmissionsStatus = {
+  accepted: 'accepted',
+  disputed: 'disputed',
+  rejected: 'rejected',
+  withdrawn: 'withdrawn',
 } as const;
 
