@@ -58,7 +58,7 @@ async function requireUserId(
 ): Promise<string | null> {
   const userId = getAuthUserId(req);
   if (!userId) {
-    res.status(401).json({ error: "Sign in to continue." });
+    res.status(401).json({ error: "Please sign in to view or access these details." });
     return null;
   }
   return userId;
