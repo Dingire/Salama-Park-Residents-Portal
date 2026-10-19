@@ -52,3 +52,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local working documents (source .docx, test fixtures, Apps Script with the
+# shared secret). Kept out of version control on purpose.
+docs/

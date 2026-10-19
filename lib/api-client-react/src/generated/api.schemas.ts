@@ -805,6 +805,118 @@ export interface PetitionVerificationInput {
   reason: string;
 }
 
+export interface AdminRegisterSnapshot {
+  id: string;
+  reference: string;
+  denominator: number;
+  cutoffAt: string;
+  rulesDescription: string;
+  integrityHash: string;
+  approvedBy: string;
+  approvedAt: string;
+  createdAt: string;
+}
+
+export interface RegisterSnapshotInput {
+  /**
+     * @minLength 3
+     * @maxLength 120
+     */
+  reference: string;
+  /** @minimum 1 */
+  denominator: number;
+  cutoffAt: string;
+  /**
+     * @minLength 3
+     * @maxLength 2000
+     */
+  rulesDescription: string;
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  integrityHash: string;
+}
+
+export interface PetitionConfigurationInput {
+  /**
+     * @minLength 3
+     * @maxLength 300
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  petitionVersion: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  constitutionVersion: string;
+  /**
+     * @minLength 3
+     * @maxLength 2000
+     */
+  eligibilityText: string;
+  openingAt: string;
+  closingAt: string;
+  /** @nullable */
+  registerSnapshotId?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  proposedThreshold?: number | null;
+}
+
+export type AdminPetitionConfigurationStatus = typeof AdminPetitionConfigurationStatus[keyof typeof AdminPetitionConfigurationStatus];
+
+
+export const AdminPetitionConfigurationStatus = {
+  draft: 'draft',
+  approved: 'approved',
+  closed: 'closed',
+} as const;
+
+export interface AdminPetitionConfiguration {
+  id: string;
+  title: string;
+  petitionVersion: string;
+  constitutionVersion: string;
+  eligibilityText: string;
+  /** @nullable */
+  openingAt: string | null;
+  /** @nullable */
+  closingAt: string | null;
+  /** @nullable */
+  registerSnapshotId: string | null;
+  /** @nullable */
+  proposedThreshold: number | null;
+  status: AdminPetitionConfigurationStatus;
+  /** @nullable */
+  approvedBy: string | null;
+  /** @nullable */
+  approvedAt: string | null;
+  createdAt: string;
+}
+
+export type AdminPetitionConfigurationStateState = typeof AdminPetitionConfigurationStateState[keyof typeof AdminPetitionConfigurationStateState];
+
+
+export const AdminPetitionConfigurationStateState = {
+  'not-configured': 'not-configured',
+  scheduled: 'scheduled',
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface AdminPetitionConfigurationState {
+  configuration: AdminPetitionConfiguration | null;
+  state: AdminPetitionConfigurationStateState;
+  signingEnabled: boolean;
+}
+
 export type GetAdminApplicationsParams = {
 /**
  * @minimum 1

@@ -580,3 +580,176 @@ export const VerifyPetitionSubmissionResponse = zod.object({
 })
 
 
+/**
+ * @summary List published register snapshots, newest first
+ */
+export const GetAdminRegisterSnapshotsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string(),
+  "denominator": zod.number().int(),
+  "cutoffAt": zod.coerce.date(),
+  "rulesDescription": zod.string(),
+  "integrityHash": zod.string(),
+  "approvedBy": zod.string(),
+  "approvedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const GetAdminRegisterSnapshotsResponse = zod.array(GetAdminRegisterSnapshotsResponseItem)
+
+
+/**
+ * @summary Publish a register snapshot that fixes the verified denominator
+ */
+export const createAdminRegisterSnapshotBodyReferenceMin = 3;
+export const createAdminRegisterSnapshotBodyReferenceMax = 120;
+
+
+export const createAdminRegisterSnapshotBodyRulesDescriptionMin = 3;
+export const createAdminRegisterSnapshotBodyRulesDescriptionMax = 2000;
+
+export const createAdminRegisterSnapshotBodyIntegrityHashMin = 3;
+export const createAdminRegisterSnapshotBodyIntegrityHashMax = 200;
+
+
+
+export const CreateAdminRegisterSnapshotBody = zod.object({
+  "reference": zod.string().min(createAdminRegisterSnapshotBodyReferenceMin).max(createAdminRegisterSnapshotBodyReferenceMax),
+  "denominator": zod.number().int().min(1),
+  "cutoffAt": zod.coerce.date(),
+  "rulesDescription": zod.string().min(createAdminRegisterSnapshotBodyRulesDescriptionMin).max(createAdminRegisterSnapshotBodyRulesDescriptionMax),
+  "integrityHash": zod.string().min(createAdminRegisterSnapshotBodyIntegrityHashMin).max(createAdminRegisterSnapshotBodyIntegrityHashMax)
+})
+
+export const CreateAdminRegisterSnapshotResponse = zod.object({
+  "id": zod.string().uuid(),
+  "reference": zod.string(),
+  "denominator": zod.number().int(),
+  "cutoffAt": zod.coerce.date(),
+  "rulesDescription": zod.string(),
+  "integrityHash": zod.string(),
+  "approvedBy": zod.string(),
+  "approvedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Read the current petition configuration and its derived state
+ */
+export const GetAdminPetitionConfigurationResponse = zod.object({
+  "configuration": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "petitionVersion": zod.string(),
+  "constitutionVersion": zod.string(),
+  "eligibilityText": zod.string(),
+  "openingAt": zod.coerce.date().nullable(),
+  "closingAt": zod.coerce.date().nullable(),
+  "registerSnapshotId": zod.string().uuid().nullable(),
+  "proposedThreshold": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "state": zod.enum(['not-configured', 'scheduled', 'open', 'closed']),
+  "signingEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Create or replace the draft petition configuration
+ */
+export const saveAdminPetitionConfigurationBodyTitleMin = 3;
+export const saveAdminPetitionConfigurationBodyTitleMax = 300;
+
+export const saveAdminPetitionConfigurationBodyPetitionVersionMax = 60;
+
+export const saveAdminPetitionConfigurationBodyConstitutionVersionMax = 60;
+
+export const saveAdminPetitionConfigurationBodyEligibilityTextMin = 3;
+export const saveAdminPetitionConfigurationBodyEligibilityTextMax = 2000;
+
+
+
+
+export const SaveAdminPetitionConfigurationBody = zod.object({
+  "title": zod.string().min(saveAdminPetitionConfigurationBodyTitleMin).max(saveAdminPetitionConfigurationBodyTitleMax),
+  "petitionVersion": zod.string().min(1).max(saveAdminPetitionConfigurationBodyPetitionVersionMax),
+  "constitutionVersion": zod.string().min(1).max(saveAdminPetitionConfigurationBodyConstitutionVersionMax),
+  "eligibilityText": zod.string().min(saveAdminPetitionConfigurationBodyEligibilityTextMin).max(saveAdminPetitionConfigurationBodyEligibilityTextMax),
+  "openingAt": zod.coerce.date(),
+  "closingAt": zod.coerce.date(),
+  "registerSnapshotId": zod.string().uuid().nullish(),
+  "proposedThreshold": zod.number().int().min(1).nullish()
+})
+
+export const SaveAdminPetitionConfigurationResponse = zod.object({
+  "configuration": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "petitionVersion": zod.string(),
+  "constitutionVersion": zod.string(),
+  "eligibilityText": zod.string(),
+  "openingAt": zod.coerce.date().nullable(),
+  "closingAt": zod.coerce.date().nullable(),
+  "registerSnapshotId": zod.string().uuid().nullable(),
+  "proposedThreshold": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "state": zod.enum(['not-configured', 'scheduled', 'open', 'closed']),
+  "signingEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Approve the current draft configuration to open the signing window
+ */
+export const ApproveAdminPetitionConfigurationResponse = zod.object({
+  "configuration": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "petitionVersion": zod.string(),
+  "constitutionVersion": zod.string(),
+  "eligibilityText": zod.string(),
+  "openingAt": zod.coerce.date().nullable(),
+  "closingAt": zod.coerce.date().nullable(),
+  "registerSnapshotId": zod.string().uuid().nullable(),
+  "proposedThreshold": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "state": zod.enum(['not-configured', 'scheduled', 'open', 'closed']),
+  "signingEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Close the petition so no further signatures are accepted
+ */
+export const CloseAdminPetitionConfigurationResponse = zod.object({
+  "configuration": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "petitionVersion": zod.string(),
+  "constitutionVersion": zod.string(),
+  "eligibilityText": zod.string(),
+  "openingAt": zod.coerce.date().nullable(),
+  "closingAt": zod.coerce.date().nullable(),
+  "registerSnapshotId": zod.string().uuid().nullable(),
+  "proposedThreshold": zod.number().int().nullable(),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "state": zod.enum(['not-configured', 'scheduled', 'open', 'closed']),
+  "signingEnabled": zod.boolean()
+})
+
+

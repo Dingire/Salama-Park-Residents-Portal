@@ -23,6 +23,12 @@ import {
   useReviewMembershipApplication,
   useGetAdminPetitionSubmissions, getGetAdminPetitionSubmissionsQueryKey,
   useVerifyPetitionSubmission,
+  useGetAdminRegisterSnapshots, getGetAdminRegisterSnapshotsQueryKey,
+  useCreateAdminRegisterSnapshot,
+  useGetAdminPetitionConfiguration, getGetAdminPetitionConfigurationQueryKey,
+  useSaveAdminPetitionConfiguration,
+  useApproveAdminPetitionConfiguration,
+  useCloseAdminPetitionConfiguration,
 } from '@workspace/api-client-react';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
@@ -479,6 +485,8 @@ function AdminPage({path}:{path:string}) {
         <div className="min-w-0">
           {path==='/admin/dashboard' ? <AdminDashboard/>
           :path==='/admin/verifications' ? <AdminPetitionPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPollResultsQueryKey()});}}/>
+          :path==='/admin/petitions' ? <AdminPetitionConfigurationPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPetitionQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
+          :path==='/admin/register-snapshots' ? <AdminRegisterSnapshotsPanel onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
           :isManagementPage ? <AdminApplicationsPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});}}/>
           :<div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">This workflow is not configured.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">No approved official records are available for this page. Configuration and publishing actions are not enabled until the Association supplies and approves the required rules and source documents.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/documents" className="btn-secondary">View public documents <ArrowUpRight size={14}/></Link><Link href="/announcements" className="btn-secondary">Public notices <ArrowUpRight size={14}/></Link></div></div>}
         </div>
@@ -520,6 +528,183 @@ function AdminDashboard() {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label,value])=><div key={label} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-semibold text-[#738090]">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight text-[#192d45]">{value}</p></div>)}</div>
     <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-wider text-[#647083]">Subscription poll &amp; household</p>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{pollRows.map(([label,value])=><div key={label} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="text-xs font-semibold text-[#738090]">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight text-[#192d45]">{value}</p></div>)}</div>
+  </div>;
+}
+
+function AdminRegisterSnapshotsPanel({onChanged}:{onChanged:()=>void}) {
+  const queryClient=useQueryClient();
+  const [form,setForm]=useState({reference:'',denominator:'',cutoffAt:'',rulesDescription:'',integrityHash:''});
+  const [message,setMessage]=useState('');
+  const [error,setError]=useState('');
+  const snapshots=useGetAdminRegisterSnapshots({query:{queryKey:getGetAdminRegisterSnapshotsQueryKey()}});
+  const createSnapshot=useCreateAdminRegisterSnapshot();
+  const set=(patch:Partial<typeof form>)=>setForm(current=>({...current,...patch}));
+  const submit=(event:FormEvent)=>{
+    event.preventDefault();
+    setError('');setMessage('');
+    const denominator=Number(form.denominator);
+    if(!form.reference.trim()){setError('Enter a reference for this snapshot.');return;}
+    if(!Number.isInteger(denominator)||denominator<1){setError('Enter the verified number of members as a whole number of at least 1.');return;}
+    if(!form.cutoffAt){setError('Choose the register cutoff date this snapshot reflects.');return;}
+    if(form.rulesDescription.trim().length<3){setError('Describe the rules used to compile the register.');return;}
+    if(form.integrityHash.trim().length<3){setError('Enter an integrity hash so the snapshot can be checked later.');return;}
+    createSnapshot.mutate({data:{
+      reference:form.reference.trim(),
+      denominator,
+      cutoffAt:new Date(form.cutoffAt).toISOString(),
+      rulesDescription:form.rulesDescription.trim(),
+      integrityHash:form.integrityHash.trim(),
+    }},{
+      onSuccess:(saved:any)=>{
+        setMessage(`Snapshot ${saved.reference} published with a denominator of ${saved.denominator}. The public threshold now uses this figure.`);
+        setForm({reference:'',denominator:'',cutoffAt:'',rulesDescription:'',integrityHash:''});
+        queryClient.invalidateQueries({queryKey:getGetAdminRegisterSnapshotsQueryKey()});
+        onChanged();
+      },
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The snapshot could not be published.'),
+    });
+  };
+  return <div className="space-y-6">
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h2 className="font-semibold text-[#1c2e44]">Publish a register snapshot</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#687486]">The snapshot fixes the verified membership denominator that the constitutional two-thirds threshold is measured against. Snapshots are append-only: the most recent one by approval date is the figure the public pages report.</p>
+      <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-medium text-[#33445a]">Reference
+          <input value={form.reference} onChange={event=>set({reference:event.target.value})} placeholder="SNAP-2026-01" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Verified members (denominator)
+          <input value={form.denominator} onChange={event=>set({denominator:event.target.value})} inputMode="numeric" placeholder="350" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Register cutoff
+          <input type="date" value={form.cutoffAt} onChange={event=>set({cutoffAt:event.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Integrity hash
+          <input value={form.integrityHash} onChange={event=>set({integrityHash:event.target.value})} placeholder="sha256:…" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a] sm:col-span-2">Rules used
+          <textarea value={form.rulesDescription} onChange={event=>set({rulesDescription:event.target.value})} rows={3} placeholder="Describe how the register was compiled and verified." className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        {error&&<p className="text-sm text-[#a33b3b] sm:col-span-2">{error}</p>}
+        {message&&<p className="text-sm text-[#315f43] sm:col-span-2">{message}</p>}
+        <div className="sm:col-span-2"><button type="submit" disabled={createSnapshot.isPending} className="btn-primary disabled:opacity-50">{createSnapshot.isPending?'Publishing…':'Publish snapshot'} <ArrowRight size={15} /></button></div>
+      </form>
+    </div>
+    {snapshots.isLoading?<Skeleton rows={2}/>:snapshots.isError?<ErrorLine retry={()=>snapshots.refetch()}/>
+    :<div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h2 className="font-semibold text-[#1c2e44]">Published snapshots</h2>
+      {(!snapshots.data||snapshots.data.length===0)?<p className="mt-3 text-sm text-[#687486]">No register snapshot has been published yet. Until one exists the petition thresholds cannot be calculated.</p>
+      :<div className="mt-4 space-y-3">{snapshots.data.map(snapshot=><div key={snapshot.id} className="rounded-xl border border-[#e8e6df] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-[#1c2e44]">{snapshot.reference}</p><p className="text-sm text-[#687486]">{snapshot.denominator} verified members</p></div>
+        <p className="mt-2 text-xs text-[#738090]">Cutoff {snapshot.cutoffAt?new Date(snapshot.cutoffAt).toLocaleDateString():'—'} · approved {snapshot.approvedAt?new Date(snapshot.approvedAt).toLocaleString():'—'}</p>
+        <p className="mt-2 text-sm leading-6 text-[#687486]">{snapshot.rulesDescription}</p>
+        <p className="mt-1 text-xs text-[#8a94a3]">Integrity: {snapshot.integrityHash}</p>
+      </div>)}</div>}
+    </div>}
+  </div>;
+}
+
+function AdminPetitionConfigurationPanel({canReview,onChanged}:{canReview:boolean;onChanged:()=>void}) {
+  const queryClient=useQueryClient();
+  const [form,setForm]=useState({title:'',petitionVersion:'',constitutionVersion:'',eligibilityText:'',openingAt:'',closingAt:'',registerSnapshotId:'',proposedThreshold:''});
+  const [seeded,setSeeded]=useState(false);
+  const [message,setMessage]=useState('');
+  const [error,setError]=useState('');
+  const config=useGetAdminPetitionConfiguration({query:{queryKey:getGetAdminPetitionConfigurationQueryKey()}});
+  const snapshots=useGetAdminRegisterSnapshots({query:{queryKey:getGetAdminRegisterSnapshotsQueryKey()}});
+  const save=useSaveAdminPetitionConfiguration();
+  const approve=useApproveAdminPetitionConfiguration();
+  const close=useCloseAdminPetitionConfiguration();
+  const current=config.data?.configuration??null;
+  useEffect(()=>{
+    if(seeded||!config.data)return;
+    if(current){
+      setForm({
+        title:current.title??'',petitionVersion:current.petitionVersion??'',constitutionVersion:current.constitutionVersion??'',
+        eligibilityText:current.eligibilityText??'',
+        openingAt:current.openingAt?new Date(current.openingAt).toISOString().slice(0,10):'',
+        closingAt:current.closingAt?new Date(current.closingAt).toISOString().slice(0,10):'',
+        registerSnapshotId:current.registerSnapshotId??'',
+        proposedThreshold:current.proposedThreshold!=null?String(current.proposedThreshold):'',
+      });
+    }
+    setSeeded(true);
+  },[seeded,config.data,current]);
+  const refresh=()=>{queryClient.invalidateQueries({queryKey:getGetAdminPetitionConfigurationQueryKey()});queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});onChanged();};
+  const set=(patch:Partial<typeof form>)=>setForm(cur=>({...cur,...patch}));
+  const submit=(event:FormEvent)=>{
+    event.preventDefault();setError('');setMessage('');
+    if(form.title.trim().length<3){setError('Enter a title for the petition.');return;}
+    if(!form.petitionVersion.trim()){setError('Enter the petition version.');return;}
+    if(!form.constitutionVersion.trim()){setError('Enter the Constitution version.');return;}
+    if(form.eligibilityText.trim().length<3){setError('Describe who is eligible to sign.');return;}
+    if(!form.openingAt){setError('Choose an opening date.');return;}
+    if(!form.closingAt){setError('Choose a closing date.');return;}
+    const opening=new Date(form.openingAt);const closing=new Date(form.closingAt);
+    if(closing<=opening){setError('The closing date must be after the opening date.');return;}
+    const threshold=form.proposedThreshold.trim()===''?null:Number(form.proposedThreshold);
+    if(threshold!==null&&(!Number.isInteger(threshold)||threshold<1)){setError('The proposed threshold must be a whole number of at least 1, or left blank.');return;}
+    save.mutate({data:{
+      title:form.title.trim(),petitionVersion:form.petitionVersion.trim(),constitutionVersion:form.constitutionVersion.trim(),
+      eligibilityText:form.eligibilityText.trim(),openingAt:opening.toISOString(),closingAt:closing.toISOString(),
+      registerSnapshotId:form.registerSnapshotId||null,proposedThreshold:threshold,
+    }},{
+      onSuccess:()=>{setMessage('Draft saved. Review the details, then approve to open the signing window.');refresh();},
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The configuration could not be saved.'),
+    });
+  };
+  const runAction=(mutation:any,label:string)=>mutation.mutate(undefined,{
+    onSuccess:()=>{setMessage(`${label} succeeded.`);refresh();},
+    onError:(raw:any)=>setError(raw?.data?.error||raw?.message||`${label} failed.`),
+  });
+  const state=config.data?.state??'not-configured';
+  const stateLabel=state.replaceAll('-',' ');
+  return <div className="space-y-6">
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-5">
+      <p className="text-xs font-bold uppercase tracking-wider text-[#647083]">Current state</p>
+      <p className="mt-2 text-lg font-semibold capitalize text-[#1c2e44]">{stateLabel}</p>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#687486]">A configuration must be approved and inside its opening and closing window before residents can sign. Saving a new draft closes any configuration currently open.</p>
+      {current&&<p className="mt-2 text-xs text-[#738090]">Persisted status: {current.status} · version {current.petitionVersion} · Constitution {current.constitutionVersion}</p>}
+    </div>
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h2 className="font-semibold text-[#1c2e44]">{current?'Edit petition configuration':'Create petition configuration'}</h2>
+      <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-medium text-[#33445a] sm:col-span-2">Title
+          <input value={form.title} onChange={event=>set({title:event.target.value})} placeholder="Petition for adoption of the Draft Constitution" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Petition version
+          <input value={form.petitionVersion} onChange={event=>set({petitionVersion:event.target.value})} placeholder="1.0" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Constitution version
+          <input value={form.constitutionVersion} onChange={event=>set({constitutionVersion:event.target.value})} placeholder="1.0" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Opening date
+          <input type="date" value={form.openingAt} onChange={event=>set({openingAt:event.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Closing date
+          <input type="date" value={form.closingAt} onChange={event=>set({closingAt:event.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Register snapshot
+          <select value={form.registerSnapshotId} onChange={event=>set({registerSnapshotId:event.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">
+            <option value="">Use the most recent published snapshot</option>
+            {(snapshots.data??[]).map(snapshot=><option key={snapshot.id} value={snapshot.id}>{snapshot.reference} ({snapshot.denominator} members)</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Proposed threshold (informational)
+          <input value={form.proposedThreshold} onChange={event=>set({proposedThreshold:event.target.value})} inputMode="numeric" placeholder="Optional" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+          <span className="mt-1 block text-xs font-normal text-[#8a94a3]">Shown on the petition page for information. The two-thirds rule always decides whether the threshold is reached.</span>
+        </label>
+        <label className="text-sm font-medium text-[#33445a] sm:col-span-2">Eligibility text
+          <textarea value={form.eligibilityText} onChange={event=>set({eligibilityText:event.target.value})} rows={3} placeholder="Verified Salama Park residents who have completed registration may sign." className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        {error&&<p className="text-sm text-[#a33b3b] sm:col-span-2">{error}</p>}
+        {message&&<p className="text-sm text-[#315f43] sm:col-span-2">{message}</p>}
+        <div className="flex flex-wrap gap-3 sm:col-span-2">
+          <button type="submit" disabled={save.isPending} className="btn-primary disabled:opacity-50">{save.isPending?'Saving…':'Save draft'} <ArrowRight size={15} /></button>
+          {canReview&&current?.status==='draft'&&<button type="button" disabled={approve.isPending} onClick={()=>runAction(approve,'Approval')} className="btn-secondary disabled:opacity-50">{approve.isPending?'Approving…':'Approve configuration'}</button>}
+          {canReview&&current&&current.status!=='closed'&&<button type="button" disabled={close.isPending} onClick={()=>runAction(close,'Closure')} className="btn-secondary disabled:opacity-50">{close.isPending?'Closing…':'Close petition'}</button>}
+        </div>
+      </form>
+    </div>
   </div>;
 }
 

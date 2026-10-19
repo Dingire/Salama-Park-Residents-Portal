@@ -364,6 +364,137 @@ paths:
           description: Returning Officer or administrator role required
         "404":
           description: Submission not found
+  /admin/register-snapshots:
+    get:
+      operationId: getAdminRegisterSnapshots
+      tags: [resident]
+      summary: List published register snapshots, newest first
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: The published register snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminRegisterSnapshot"
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
+    post:
+      operationId: createAdminRegisterSnapshot
+      tags: [resident]
+      summary: Publish a register snapshot that fixes the verified denominator
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterSnapshotInput"
+      responses:
+        "201":
+          description: The published register snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRegisterSnapshot"
+        "400":
+          description: Invalid register snapshot details
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
+  /admin/petition/configuration:
+    get:
+      operationId: getAdminPetitionConfiguration
+      tags: [resident]
+      summary: Read the current petition configuration and its derived state
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: The current petition configuration, or null when none exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPetitionConfigurationState"
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
+  /admin/petition/configuration/save:
+    post:
+      operationId: saveAdminPetitionConfiguration
+      tags: [resident]
+      summary: Create or replace the draft petition configuration
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PetitionConfigurationInput"
+      responses:
+        "200":
+          description: The saved draft petition configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPetitionConfigurationState"
+        "400":
+          description: Invalid petition configuration
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
+  /admin/petition/configuration/approve:
+    post:
+      operationId: approveAdminPetitionConfiguration
+      tags: [resident]
+      summary: Approve the current draft configuration to open the signing window
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: The approved petition configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPetitionConfigurationState"
+        "400":
+          description: Configuration is incomplete and cannot be approved
+        "401":
+          description: Authentication required
+        "403":
+          description: Returning Officer or administrator role required
+        "404":
+          description: No petition configuration exists to approve
+  /admin/petition/configuration/close:
+    post:
+      operationId: closeAdminPetitionConfiguration
+      tags: [resident]
+      summary: Close the petition so no further signatures are accepted
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: The closed petition configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPetitionConfigurationState"
+        "401":
+          description: Authentication required
+        "403":
+          description: Returning Officer or administrator role required
+        "404":
+          description: No petition configuration exists to close
 components:
   securitySchemes:
     clerkSession:
@@ -864,4 +995,102 @@ components:
         onMembersRegister: { type: boolean }
         duplicateFlag: { type: boolean }
         reason: { type: string, minLength: 3, maxLength: 1000 }
+    AdminRegisterSnapshot:
+      type: object
+      required:
+        - id
+        - reference
+        - denominator
+        - cutoffAt
+        - rulesDescription
+        - integrityHash
+        - approvedBy
+        - approvedAt
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        denominator: { type: integer }
+        cutoffAt: { type: string, format: date-time }
+        rulesDescription: { type: string }
+        integrityHash: { type: string }
+        approvedBy: { type: string }
+        approvedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    RegisterSnapshotInput:
+      type: object
+      required:
+        - reference
+        - denominator
+        - cutoffAt
+        - rulesDescription
+        - integrityHash
+      properties:
+        reference: { type: string, minLength: 3, maxLength: 120 }
+        denominator: { type: integer, minimum: 1 }
+        cutoffAt: { type: string, format: date-time }
+        rulesDescription: { type: string, minLength: 3, maxLength: 2000 }
+        integrityHash: { type: string, minLength: 3, maxLength: 200 }
+    PetitionConfigurationInput:
+      type: object
+      required:
+        - title
+        - petitionVersion
+        - constitutionVersion
+        - eligibilityText
+        - openingAt
+        - closingAt
+      properties:
+        title: { type: string, minLength: 3, maxLength: 300 }
+        petitionVersion: { type: string, minLength: 1, maxLength: 60 }
+        constitutionVersion: { type: string, minLength: 1, maxLength: 60 }
+        eligibilityText: { type: string, minLength: 3, maxLength: 2000 }
+        openingAt: { type: string, format: date-time }
+        closingAt: { type: string, format: date-time }
+        registerSnapshotId: { type: ["string", "null"], format: uuid }
+        proposedThreshold: { type: ["integer", "null"], minimum: 1 }
+    AdminPetitionConfiguration:
+      type: object
+      required:
+        - id
+        - title
+        - petitionVersion
+        - constitutionVersion
+        - eligibilityText
+        - openingAt
+        - closingAt
+        - registerSnapshotId
+        - proposedThreshold
+        - status
+        - approvedBy
+        - approvedAt
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        petitionVersion: { type: string }
+        constitutionVersion: { type: string }
+        eligibilityText: { type: string }
+        openingAt: { type: ["string", "null"], format: date-time }
+        closingAt: { type: ["string", "null"], format: date-time }
+        registerSnapshotId: { type: ["string", "null"], format: uuid }
+        proposedThreshold: { type: ["integer", "null"] }
+        status:
+          type: string
+          enum: [draft, approved, closed]
+        approvedBy: { type: ["string", "null"] }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    AdminPetitionConfigurationState:
+      type: object
+      required: [configuration, state, signingEnabled]
+      properties:
+        configuration:
+          oneOf:
+            - $ref: "#/components/schemas/AdminPetitionConfiguration"
+            - type: "null"
+        state:
+          type: string
+          enum: [not-configured, scheduled, open, closed]
+        signingEnabled: { type: boolean }
 

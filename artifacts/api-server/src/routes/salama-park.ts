@@ -33,6 +33,7 @@ import {
 } from "../lib/auth";
 import { pushToGoogleSheets } from "../lib/google-sheets";
 import { isUniqueViolation } from "../lib/pg-errors";
+import { calculatePetitionThresholds } from "../salama-park-rules";
 import {
   GetMyResidentApplicationResponse,
   GetMyPetitionReceiptsResponse,
@@ -58,6 +59,14 @@ import {
   VerifyPetitionSubmissionParams,
   VerifyPetitionSubmissionResponse,
   WithdrawMyPetitionSignatureResponse,
+  GetAdminRegisterSnapshotsResponse,
+  CreateAdminRegisterSnapshotBody,
+  CreateAdminRegisterSnapshotResponse,
+  GetAdminPetitionConfigurationResponse,
+  SaveAdminPetitionConfigurationBody,
+  SaveAdminPetitionConfigurationResponse,
+  ApproveAdminPetitionConfigurationResponse,
+  CloseAdminPetitionConfigurationResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -263,21 +272,14 @@ router.get("/public/overview", async (_req, res): Promise<void> => {
 
   const denominator = snapshot?.denominator ?? null;
   const proposedThreshold = config?.proposedThreshold ?? null;
-  const twoThirdsThreshold =
-    denominator !== null ? Math.ceil((denominator * 2) / 3) : null;
-  const minimumQuorum = denominator !== null ? Math.ceil(denominator * 0.25) : null;
-  const signaturesRemaining =
-    proposedThreshold !== null
-      ? Math.max(proposedThreshold - acceptedPetitionSignatures, 0)
-      : null;
-  const thresholdReached =
-    proposedThreshold !== null
-      ? acceptedPetitionSignatures >= proposedThreshold
-      : null;
-  const supportPercentage =
-    denominator !== null && denominator > 0
-      ? (acceptedPetitionSignatures / denominator) * 100
-      : null;
+  // The constitution sets the adoption bar at two thirds of the verified
+  // register, so that figure — not the administratively proposed number —
+  // decides whether the threshold is reached. `proposedThreshold` is reported
+  // for information only.
+  const thresholds = calculatePetitionThresholds(
+    denominator,
+    acceptedPetitionSignatures,
+  );
 
   res.json(
     GetPublicOverviewResponse.parse({
@@ -289,11 +291,11 @@ router.get("/public/overview", async (_req, res): Promise<void> => {
       withdrawnPetitionSignatures,
       petitionStatus: config ? getPetitionState(config) : "not-configured",
       proposedThreshold,
-      twoThirdsThreshold,
-      minimumQuorum,
-      signaturesRemaining,
-      thresholdReached,
-      supportPercentage,
+      twoThirdsThreshold: thresholds.twoThirdsThreshold,
+      minimumQuorum: thresholds.minimumQuorum,
+      signaturesRemaining: thresholds.signaturesRemaining,
+      thresholdReached: thresholds.thresholdReached,
+      supportPercentage: thresholds.supportPercentage,
     }),
   );
 });
@@ -942,21 +944,12 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
 
   const denominator = snapshot?.denominator ?? null;
   const proposedThreshold = config?.proposedThreshold ?? null;
-  const twoThirdsThreshold =
-    denominator !== null ? Math.ceil((denominator * 2) / 3) : null;
-  const minimumQuorum = denominator !== null ? Math.ceil(denominator * 0.25) : null;
-  const signaturesRemaining =
-    proposedThreshold !== null
-      ? Math.max(proposedThreshold - acceptedPetitionSignatures, 0)
-      : null;
-  const thresholdReached =
-    proposedThreshold !== null
-      ? acceptedPetitionSignatures >= proposedThreshold
-      : null;
-  const supportPercentage =
-    denominator !== null && denominator > 0
-      ? (acceptedPetitionSignatures / denominator) * 100
-      : null;
+  // As on the public overview, the constitutional two-thirds rule decides
+  // whether the threshold is reached; the proposed number is informational.
+  const thresholds = calculatePetitionThresholds(
+    denominator,
+    acceptedPetitionSignatures,
+  );
 
   const poll = await computePollMetrics();
   const [unverifiedRow] = await db
@@ -983,10 +976,10 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
       acceptedPetitionSignatures,
       verifiedDenominator: denominator,
       petitionStatus: config ? getPetitionState(config) : "not-configured",
-      twoThirdsThreshold,
-      minimumQuorum,
-      signaturesRemaining,
-      thresholdReached,
+      twoThirdsThreshold: thresholds.twoThirdsThreshold,
+      minimumQuorum: thresholds.minimumQuorum,
+      signaturesRemaining: thresholds.signaturesRemaining,
+      thresholdReached: thresholds.thresholdReached,
       totalVotes: poll.totalVotes,
       votesK50: poll.votesK50,
       votesK100: poll.votesK100,
@@ -1380,6 +1373,350 @@ router.post(
       return;
     }
     res.json(VerifyPetitionSubmissionResponse.parse(result));
+  },
+);
+
+/**
+ * Register snapshots fix the verified denominator that the constitutional
+ * two-thirds threshold is measured against. Publishing one is an officer
+ * action: it is append-only, and the newest snapshot by approved_at is the one
+ * the public pages use.
+ */
+router.get("/admin/register-snapshots", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+  const roles = await getAssociationRoles(userId);
+  if (!hasRole(roles, ...adminRoles)) {
+    res.status(403).json({ error: "An authorized association role is required." });
+    return;
+  }
+
+  const snapshots = await db
+    .select()
+    .from(registerSnapshotsTable)
+    .orderBy(desc(registerSnapshotsTable.approvedAt));
+
+  res.json(GetAdminRegisterSnapshotsResponse.parse(snapshots));
+});
+
+router.post("/admin/register-snapshots", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+  const roles = await getAssociationRoles(userId);
+  if (!hasRole(roles, ...adminRoles)) {
+    res.status(403).json({ error: "An authorized association role is required." });
+    return;
+  }
+
+  const parsed = CreateAdminRegisterSnapshotBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Provide a reference, a positive denominator, a cutoff date, the rules used, and an integrity hash.",
+    });
+    return;
+  }
+  const input = parsed.data;
+
+  try {
+    const created = await db.transaction(async (tx: any) => {
+      const [snapshot] = await tx
+        .insert(registerSnapshotsTable)
+        .values({
+          reference: input.reference.trim(),
+          denominator: input.denominator,
+          cutoffAt: input.cutoffAt,
+          rulesDescription: input.rulesDescription.trim(),
+          integrityHash: input.integrityHash.trim(),
+          approvedBy: userId,
+          approvedAt: new Date(),
+        })
+        .returning();
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "register.snapshot.published",
+        recordType: "register_snapshot",
+        recordId: snapshot.reference,
+        metadata: JSON.stringify({
+          denominator: snapshot.denominator,
+          cutoffAt: snapshot.cutoffAt,
+          integrityHash: snapshot.integrityHash,
+        }),
+      });
+
+      return snapshot;
+    });
+
+    res.status(201).json(CreateAdminRegisterSnapshotResponse.parse(created));
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({
+        error: "A register snapshot with that reference already exists.",
+      });
+      return;
+    }
+    throw error;
+  }
+});
+
+type PetitionConfigRow = {
+  id: string;
+  title: string;
+  petitionVersion: string;
+  constitutionVersion: string;
+  eligibilityText: string;
+  openingAt: Date | null;
+  closingAt: Date | null;
+  registerSnapshotId: string | null;
+  proposedThreshold: number | null;
+  status: "draft" | "approved" | "closed";
+  approvedBy: string | null;
+  approvedAt: Date | null;
+  createdAt: Date;
+};
+
+function describePetitionConfiguration(config: PetitionConfigRow | null) {
+  const state = config ? getPetitionState(config) : ("not-configured" as const);
+  return { configuration: config, state, signingEnabled: state === "open" };
+}
+
+async function loadCurrentPetitionConfiguration() {
+  const [config] = await db
+    .select()
+    .from(petitionConfigurationsTable)
+    .orderBy(desc(petitionConfigurationsTable.createdAt))
+    .limit(1);
+  return (config ?? null) as PetitionConfigRow | null;
+}
+
+router.get("/admin/petition/configuration", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+  const roles = await getAssociationRoles(userId);
+  if (!hasRole(roles, ...adminRoles)) {
+    res.status(403).json({ error: "An authorized association role is required." });
+    return;
+  }
+
+  const config = await loadCurrentPetitionConfiguration();
+  res.json(
+    GetAdminPetitionConfigurationResponse.parse(
+      describePetitionConfiguration(config),
+    ),
+  );
+});
+
+/**
+ * Save (or replace) the draft configuration. Only one configuration is ever in
+ * play, so a new save supersedes the previous one: the old row is kept for the
+ * audit trail but moved to "closed" so residents can no longer sign against it.
+ */
+router.post(
+  "/admin/petition/configuration/save",
+  async (req, res): Promise<void> => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const roles = await getAssociationRoles(userId);
+    if (!hasRole(roles, ...adminRoles)) {
+      res.status(403).json({
+        error: "An authorized association role is required.",
+      });
+      return;
+    }
+
+    const parsed = SaveAdminPetitionConfigurationBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error:
+          "Provide the title, petition and Constitution versions, eligibility text, an opening date and a closing date.",
+      });
+      return;
+    }
+    const input = parsed.data;
+
+    if (input.closingAt <= input.openingAt) {
+      res.status(400).json({
+        error: "The closing date must be after the opening date.",
+      });
+      return;
+    }
+
+    if (input.registerSnapshotId) {
+      const [snapshot] = await db
+        .select({ id: registerSnapshotsTable.id })
+        .from(registerSnapshotsTable)
+        .where(eq(registerSnapshotsTable.id, input.registerSnapshotId))
+        .limit(1);
+      if (!snapshot) {
+        res.status(400).json({
+          error: "The selected register snapshot does not exist.",
+        });
+        return;
+      }
+    }
+
+    const saved = await db.transaction(async (tx: any) => {
+      const [previous] = await tx
+        .select({ id: petitionConfigurationsTable.id })
+        .from(petitionConfigurationsTable)
+        .where(eq(petitionConfigurationsTable.status, "approved"))
+        .orderBy(desc(petitionConfigurationsTable.createdAt))
+        .limit(1);
+      if (previous) {
+        await tx
+          .update(petitionConfigurationsTable)
+          .set({ status: "closed" })
+          .where(eq(petitionConfigurationsTable.id, previous.id));
+      }
+
+      const [created] = await tx
+        .insert(petitionConfigurationsTable)
+        .values({
+          title: input.title.trim(),
+          petitionVersion: input.petitionVersion.trim(),
+          constitutionVersion: input.constitutionVersion.trim(),
+          eligibilityText: input.eligibilityText.trim(),
+          openingAt: input.openingAt,
+          closingAt: input.closingAt,
+          registerSnapshotId: input.registerSnapshotId ?? null,
+          proposedThreshold: input.proposedThreshold ?? null,
+          status: "draft",
+        })
+        .returning();
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "petition.configuration.saved",
+        recordType: "petition_configuration",
+        recordId: created.id,
+        metadata: JSON.stringify({
+          petitionVersion: created.petitionVersion,
+          constitutionVersion: created.constitutionVersion,
+          openingAt: created.openingAt,
+          closingAt: created.closingAt,
+          registerSnapshotId: created.registerSnapshotId,
+          supersededConfigurationId: previous?.id ?? null,
+        }),
+      });
+
+      return created;
+    });
+
+    res.json(
+      SaveAdminPetitionConfigurationResponse.parse(
+        describePetitionConfiguration(saved as PetitionConfigRow),
+      ),
+    );
+  },
+);
+
+router.post(
+  "/admin/petition/configuration/approve",
+  async (req, res): Promise<void> => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const roles = await getAssociationRoles(userId);
+    if (!hasRole(roles, ...reviewerRoles)) {
+      res.status(403).json({
+        error: "Returning Officer or administrator role required.",
+      });
+      return;
+    }
+
+    const config = await loadCurrentPetitionConfiguration();
+    if (!config) {
+      res.status(404).json({ error: "No petition configuration exists to approve." });
+      return;
+    }
+    if (config.status !== "draft") {
+      res.status(400).json({
+        error: "Only a draft configuration can be approved.",
+      });
+      return;
+    }
+    if (!config.openingAt || !config.closingAt) {
+      res.status(400).json({
+        error: "Set the opening and closing dates before approving.",
+      });
+      return;
+    }
+
+    const approved = await db.transaction(async (tx: any) => {
+      const [updated] = await tx
+        .update(petitionConfigurationsTable)
+        .set({ status: "approved", approvedBy: userId, approvedAt: new Date() })
+        .where(eq(petitionConfigurationsTable.id, config.id))
+        .returning();
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "petition.configuration.approved",
+        recordType: "petition_configuration",
+        recordId: updated.id,
+        metadata: JSON.stringify({
+          petitionVersion: updated.petitionVersion,
+          constitutionVersion: updated.constitutionVersion,
+          openingAt: updated.openingAt,
+          closingAt: updated.closingAt,
+        }),
+      });
+
+      return updated;
+    });
+
+    res.json(
+      ApproveAdminPetitionConfigurationResponse.parse(
+        describePetitionConfiguration(approved as PetitionConfigRow),
+      ),
+    );
+  },
+);
+
+router.post(
+  "/admin/petition/configuration/close",
+  async (req, res): Promise<void> => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const roles = await getAssociationRoles(userId);
+    if (!hasRole(roles, ...reviewerRoles)) {
+      res.status(403).json({
+        error: "Returning Officer or administrator role required.",
+      });
+      return;
+    }
+
+    const config = await loadCurrentPetitionConfiguration();
+    if (!config) {
+      res.status(404).json({ error: "No petition configuration exists to close." });
+      return;
+    }
+
+    const closed = await db.transaction(async (tx: any) => {
+      const [updated] = await tx
+        .update(petitionConfigurationsTable)
+        .set({ status: "closed" })
+        .where(eq(petitionConfigurationsTable.id, config.id))
+        .returning();
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "petition.configuration.closed",
+        recordType: "petition_configuration",
+        recordId: updated.id,
+        metadata: JSON.stringify({
+          petitionVersion: updated.petitionVersion,
+          constitutionVersion: updated.constitutionVersion,
+        }),
+      });
+
+      return updated;
+    });
+
+    res.json(
+      CloseAdminPetitionConfigurationResponse.parse(
+        describePetitionConfiguration(closed as PetitionConfigRow),
+      ),
+    );
   },
 );
 

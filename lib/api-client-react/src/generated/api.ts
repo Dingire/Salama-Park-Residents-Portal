@@ -24,12 +24,15 @@ import type {
   AdminApplication,
   AdminApplicationPage,
   AdminDashboard,
+  AdminPetitionConfigurationState,
   AdminPetitionSubmission,
   AdminPetitionSubmissionPage,
+  AdminRegisterSnapshot,
   ApplicationReviewInput,
   GetAdminApplicationsParams,
   GetAdminPetitionSubmissionsParams,
   HealthStatus,
+  PetitionConfigurationInput,
   PetitionConsentInput,
   PetitionReceipt,
   PetitionVerificationInput,
@@ -39,6 +42,7 @@ import type {
   PublicOverview,
   PublicPetition,
   PublicPollResults,
+  RegisterSnapshotInput,
   ResidentApplication,
   ResidentApplicationInput,
   ResidentApplicationStatus,
@@ -1437,5 +1441,483 @@ export const useVerifyPetitionSubmission = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getVerifyPetitionSubmissionMutationOptions(options));
+    }
+
+export const getGetAdminRegisterSnapshotsUrl = () => {
+
+
+
+
+  return `/api/admin/register-snapshots`
+}
+
+/**
+ * @summary List published register snapshots, newest first
+ */
+export const getAdminRegisterSnapshots = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminRegisterSnapshot[]> => {
+
+  return customFetch<AdminRegisterSnapshot[]>(getGetAdminRegisterSnapshotsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminRegisterSnapshotsQueryKey = () => {
+    return [
+    `/api/admin/register-snapshots`
+    ] as const;
+    }
+
+
+export const getGetAdminRegisterSnapshotsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminRegisterSnapshots>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRegisterSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminRegisterSnapshotsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminRegisterSnapshots>>> = ({ signal }) => getAdminRegisterSnapshots({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminRegisterSnapshots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminRegisterSnapshotsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminRegisterSnapshots>>>
+export type GetAdminRegisterSnapshotsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List published register snapshots, newest first
+ */
+
+export function useGetAdminRegisterSnapshots<TData = Awaited<ReturnType<typeof getAdminRegisterSnapshots>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRegisterSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminRegisterSnapshotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminRegisterSnapshotUrl = () => {
+
+
+
+
+  return `/api/admin/register-snapshots`
+}
+
+/**
+ * @summary Publish a register snapshot that fixes the verified denominator
+ */
+export const createAdminRegisterSnapshot = async (registerSnapshotInput: RegisterSnapshotInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminRegisterSnapshot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminRegisterSnapshot>(getCreateAdminRegisterSnapshotUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(registerSnapshotInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminRegisterSnapshotMutationKey = () => ['createAdminRegisterSnapshot'] as const;
+
+export const getCreateAdminRegisterSnapshotMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminRegisterSnapshot>>, TError,CreateAdminRegisterSnapshotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminRegisterSnapshot>>, TError,CreateAdminRegisterSnapshotMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminRegisterSnapshotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminRegisterSnapshot>>, CreateAdminRegisterSnapshotMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminRegisterSnapshot(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminRegisterSnapshotMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminRegisterSnapshot>>>
+    export type CreateAdminRegisterSnapshotMutationBody = BodyType<RegisterSnapshotInput>
+    export type CreateAdminRegisterSnapshotMutationError = ErrorType<void>
+    export type CreateAdminRegisterSnapshotMutationVariables = {data: BodyType<RegisterSnapshotInput>}
+
+    /**
+ * @summary Publish a register snapshot that fixes the verified denominator
+ */
+export const useCreateAdminRegisterSnapshot = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminRegisterSnapshot>>, TError,CreateAdminRegisterSnapshotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminRegisterSnapshot>>,
+        TError,
+        CreateAdminRegisterSnapshotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminRegisterSnapshotMutationOptions(options));
+    }
+
+export const getGetAdminPetitionConfigurationUrl = () => {
+
+
+
+
+  return `/api/admin/petition/configuration`
+}
+
+/**
+ * @summary Read the current petition configuration and its derived state
+ */
+export const getAdminPetitionConfiguration = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminPetitionConfigurationState> => {
+
+  return customFetch<AdminPetitionConfigurationState>(getGetAdminPetitionConfigurationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminPetitionConfigurationQueryKey = () => {
+    return [
+    `/api/admin/petition/configuration`
+    ] as const;
+    }
+
+
+export const getGetAdminPetitionConfigurationQueryOptions = <TData = Awaited<ReturnType<typeof getAdminPetitionConfiguration>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPetitionConfiguration>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminPetitionConfigurationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPetitionConfiguration>>> = ({ signal }) => getAdminPetitionConfiguration({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPetitionConfiguration>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminPetitionConfigurationQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminPetitionConfiguration>>>
+export type GetAdminPetitionConfigurationQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the current petition configuration and its derived state
+ */
+
+export function useGetAdminPetitionConfiguration<TData = Awaited<ReturnType<typeof getAdminPetitionConfiguration>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPetitionConfiguration>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminPetitionConfigurationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveAdminPetitionConfigurationUrl = () => {
+
+
+
+
+  return `/api/admin/petition/configuration/save`
+}
+
+/**
+ * @summary Create or replace the draft petition configuration
+ */
+export const saveAdminPetitionConfiguration = async (petitionConfigurationInput: PetitionConfigurationInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminPetitionConfigurationState> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminPetitionConfigurationState>(getSaveAdminPetitionConfigurationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(petitionConfigurationInput)
+  }
+);}
+
+
+
+
+
+export const getSaveAdminPetitionConfigurationMutationKey = () => ['saveAdminPetitionConfiguration'] as const;
+
+export const getSaveAdminPetitionConfigurationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAdminPetitionConfiguration>>, TError,SaveAdminPetitionConfigurationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveAdminPetitionConfiguration>>, TError,SaveAdminPetitionConfigurationMutationVariables, TContext> => {
+
+const mutationKey = getSaveAdminPetitionConfigurationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveAdminPetitionConfiguration>>, SaveAdminPetitionConfigurationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveAdminPetitionConfiguration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveAdminPetitionConfigurationMutationResult = NonNullable<Awaited<ReturnType<typeof saveAdminPetitionConfiguration>>>
+    export type SaveAdminPetitionConfigurationMutationBody = BodyType<PetitionConfigurationInput>
+    export type SaveAdminPetitionConfigurationMutationError = ErrorType<void>
+    export type SaveAdminPetitionConfigurationMutationVariables = {data: BodyType<PetitionConfigurationInput>}
+
+    /**
+ * @summary Create or replace the draft petition configuration
+ */
+export const useSaveAdminPetitionConfiguration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAdminPetitionConfiguration>>, TError,SaveAdminPetitionConfigurationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveAdminPetitionConfiguration>>,
+        TError,
+        SaveAdminPetitionConfigurationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveAdminPetitionConfigurationMutationOptions(options));
+    }
+
+export const getApproveAdminPetitionConfigurationUrl = () => {
+
+
+
+
+  return `/api/admin/petition/configuration/approve`
+}
+
+/**
+ * @summary Approve the current draft configuration to open the signing window
+ */
+export const approveAdminPetitionConfiguration = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminPetitionConfigurationState> => {
+
+  return customFetch<AdminPetitionConfigurationState>(getApproveAdminPetitionConfigurationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveAdminPetitionConfigurationMutationKey = () => ['approveAdminPetitionConfiguration'] as const;
+
+export const getApproveAdminPetitionConfigurationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAdminPetitionConfiguration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveAdminPetitionConfiguration>>, TError,void, TContext> => {
+
+const mutationKey = getApproveAdminPetitionConfigurationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveAdminPetitionConfiguration>>, void> = () => {
+
+
+          return  approveAdminPetitionConfiguration(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveAdminPetitionConfigurationMutationResult = NonNullable<Awaited<ReturnType<typeof approveAdminPetitionConfiguration>>>
+
+    export type ApproveAdminPetitionConfigurationMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Approve the current draft configuration to open the signing window
+ */
+export const useApproveAdminPetitionConfiguration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAdminPetitionConfiguration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveAdminPetitionConfiguration>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getApproveAdminPetitionConfigurationMutationOptions(options));
+    }
+
+export const getCloseAdminPetitionConfigurationUrl = () => {
+
+
+
+
+  return `/api/admin/petition/configuration/close`
+}
+
+/**
+ * @summary Close the petition so no further signatures are accepted
+ */
+export const closeAdminPetitionConfiguration = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminPetitionConfigurationState> => {
+
+  return customFetch<AdminPetitionConfigurationState>(getCloseAdminPetitionConfigurationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCloseAdminPetitionConfigurationMutationKey = () => ['closeAdminPetitionConfiguration'] as const;
+
+export const getCloseAdminPetitionConfigurationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAdminPetitionConfiguration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeAdminPetitionConfiguration>>, TError,void, TContext> => {
+
+const mutationKey = getCloseAdminPetitionConfigurationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeAdminPetitionConfiguration>>, void> = () => {
+
+
+          return  closeAdminPetitionConfiguration(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseAdminPetitionConfigurationMutationResult = NonNullable<Awaited<ReturnType<typeof closeAdminPetitionConfiguration>>>
+
+    export type CloseAdminPetitionConfigurationMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Close the petition so no further signatures are accepted
+ */
+export const useCloseAdminPetitionConfiguration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAdminPetitionConfiguration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeAdminPetitionConfiguration>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCloseAdminPetitionConfigurationMutationOptions(options));
     }
 
