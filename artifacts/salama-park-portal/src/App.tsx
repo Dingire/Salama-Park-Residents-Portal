@@ -110,6 +110,10 @@ function AppShell({ children, dark = false }: { children: ReactNode; dark?: bool
   const [open, setOpen] = useState(false);
   const { isSignedIn } = useUser();
   const { signOut } = useClerk();
+  // The admin area is only reachable by accounts holding an association role, so
+  // ask the server whether this account qualifies before offering the link.
+  const access = useGetAdminAccess({ query: { enabled: isSignedIn, queryKey: getGetAdminAccessQueryKey() } });
+  const isOfficial = access.data?.allowed === true;
   return <div className="app-shell grain">
     <div className="bg-[#152944] px-4 py-2 text-center text-[11px] tracking-[.015em] text-white/80">
       Official resident information · Lusaka, Zambia <span className="mx-2 text-white/25">/</span><Link href="/documents" className="underline decoration-white/35 underline-offset-4 hover:text-white">View the public record</Link>
@@ -119,12 +123,12 @@ function AppShell({ children, dark = false }: { children: ReactNode; dark?: bool
         <Brand />
         <nav className="hidden items-center gap-1 lg:flex">{mainNav.map(([label, href]) => <Link key={href} href={href} className="nav-link rounded-lg px-3 py-2 text-[13px] font-medium text-[#415067]" data-testid={`nav-${href.slice(1)}`}>{label}</Link>)}</nav>
         <div className="hidden items-center gap-2 lg:flex">
-          {isSignedIn ? <><Link href="/resident/dashboard" className="rounded-lg px-3 py-2 text-sm font-semibold text-[#315f43]">Resident portal</Link><button onClick={() => signOut({ redirectUrl: basePath || '/' })} className="btn-secondary">Sign out</button></> :
+          {isSignedIn ? <>{isOfficial && <Link href="/admin/dashboard" className="rounded-lg border border-[#cfd8cc] px-3 py-2 text-sm font-semibold text-[#315f43] hover:bg-[#eef3ec]" data-testid="nav-admin">Admin</Link>}<Link href="/resident/dashboard" className="rounded-lg px-3 py-2 text-sm font-semibold text-[#315f43]">Resident portal</Link><button onClick={() => signOut({ redirectUrl: basePath || '/' })} className="btn-secondary">Sign out</button></> :
             <><Link href="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-[#38495f] hover:bg-[#eeede7]">Sign in</Link><Link href="/membership" className="btn-primary">Apply for membership <ArrowRight size={15} /></Link></>}
         </div>
         <button className="grid size-10 place-items-center rounded-lg border border-[#dfded7] lg:hidden" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)} data-testid="button-mobile-menu">{open ? <X size={19} /> : <Menu size={19} />}</button>
       </div>
-      {open && <div className="border-t border-[#e4e2db] bg-[#faf9f5] px-5 py-4 lg:hidden"><nav className="mx-auto grid max-w-lg grid-cols-2 gap-1">{mainNav.map(([label, href]) => <Link onClick={() => setOpen(false)} key={href} href={href} className="nav-link rounded-lg px-3 py-3 text-sm font-medium">{label}</Link>)}<Link href="/membership" onClick={() => setOpen(false)} className="col-span-2 mt-2 rounded-lg bg-[#315f43] px-4 py-3 text-center text-sm font-semibold text-white">Apply for membership</Link></nav></div>}
+      {open && <div className="border-t border-[#e4e2db] bg-[#faf9f5] px-5 py-4 lg:hidden"><nav className="mx-auto grid max-w-lg grid-cols-2 gap-1">{mainNav.map(([label, href]) => <Link onClick={() => setOpen(false)} key={href} href={href} className="nav-link rounded-lg px-3 py-3 text-sm font-medium">{label}</Link>)}{isSignedIn && <Link href="/resident/dashboard" onClick={() => setOpen(false)} className="nav-link rounded-lg px-3 py-3 text-sm font-semibold text-[#315f43]">Resident portal</Link>}{isOfficial && <Link href="/admin/dashboard" onClick={() => setOpen(false)} className="nav-link rounded-lg px-3 py-3 text-sm font-semibold text-[#315f43]">Admin</Link>}<Link href="/membership" onClick={() => setOpen(false)} className="col-span-2 mt-2 rounded-lg bg-[#315f43] px-4 py-3 text-center text-sm font-semibold text-white">Apply for membership</Link></nav></div>}
     </header>
     <main>{children}</main>
     <footer className="border-t border-[#e4e2db] bg-[#f0efe9]">
