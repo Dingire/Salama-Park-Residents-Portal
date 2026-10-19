@@ -917,6 +917,51 @@ export interface AdminPetitionConfigurationState {
   signingEnabled: boolean;
 }
 
+export type AssociationRole = typeof AssociationRole[keyof typeof AssociationRole];
+
+
+export const AssociationRole = {
+  resident: 'resident',
+  'returning-officer': 'returning-officer',
+  scrutineer: 'scrutineer',
+  administrator: 'administrator',
+} as const;
+
+export interface AdminRoleAssignment {
+  userId: string;
+  roles: AssociationRole[];
+}
+
+export interface AdminRoleHolder {
+  userId: string;
+  role: AssociationRole;
+  /** @nullable */
+  assignedBy?: string | null;
+  assignedAt: string;
+}
+
+export interface AdminRoleRegister {
+  items: AdminRoleHolder[];
+}
+
+export interface RoleGrantInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  userId: string;
+  role: AssociationRole;
+}
+
+export interface RoleRevokeInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  userId: string;
+  role: AssociationRole;
+}
+
 export type GetAdminApplicationsParams = {
 /**
  * @minimum 1

@@ -67,6 +67,11 @@ import {
   SaveAdminPetitionConfigurationResponse,
   ApproveAdminPetitionConfigurationResponse,
   CloseAdminPetitionConfigurationResponse,
+  GetAdminRolesResponse,
+  GrantAdminRoleBody,
+  GrantAdminRoleResponse,
+  RevokeAdminRoleBody,
+  RevokeAdminRoleResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -1719,5 +1724,179 @@ router.post(
     );
   },
 );
+
+/**
+ * Role administration.
+ *
+ * Access to privileged workflows is decided by the roles held in
+ * user_roles, with BOOTSTRAP_ADMIN_USER_ID(S) and Clerk publicMetadata as
+ * fallbacks for accounts provisioned before the role register existed. Only an
+ * administrator may change roles, and an administrator cannot take their own
+ * administrator role away, so the association can never lock itself out.
+ */
+const grantableRoles = [
+  "resident",
+  "returning-officer",
+  "scrutineer",
+  "administrator",
+] as const;
+
+type GrantableRole = (typeof grantableRoles)[number];
+
+async function requireAdministrator(
+  req: Request,
+  res: Response,
+): Promise<string | null> {
+  const userId = await requireUserId(req, res);
+  if (!userId) return null;
+  const roles = await getAssociationRoles(userId);
+  if (!hasRole(roles, "administrator", "admin")) {
+    res.status(403).json({
+      error: "An association administrator role is required.",
+    });
+    return null;
+  }
+  return userId;
+}
+
+/** Active role assignments for one account. Accepts a transaction client so it
+ * observes rows written earlier in the same transaction. */
+async function activeRolesFor(
+  client: any,
+  userId: string,
+): Promise<string[]> {
+  const rows = await client
+    .select({ role: userRolesTable.role })
+    .from(userRolesTable)
+    .where(
+      and(eq(userRolesTable.userId, userId), isNull(userRolesTable.revokedAt)),
+    );
+  return rows.map((row: any) => row.role);
+}
+
+router.get("/admin/roles", async (req, res): Promise<void> => {
+  const adminId = await requireAdministrator(req, res);
+  if (!adminId) return;
+
+  const rows = await db
+    .select({
+      userId: userRolesTable.userId,
+      role: userRolesTable.role,
+      assignedBy: userRolesTable.assignedBy,
+      assignedAt: userRolesTable.assignedAt,
+    })
+    .from(userRolesTable)
+    .where(isNull(userRolesTable.revokedAt))
+    .orderBy(desc(userRolesTable.assignedAt));
+
+  res.json(GetAdminRolesResponse.parse({ items: rows }));
+});
+
+router.post("/admin/roles/grant", async (req, res): Promise<void> => {
+  const adminId = await requireAdministrator(req, res);
+  if (!adminId) return;
+
+  const parsed = GrantAdminRoleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Provide the account to grant and a valid association role.",
+    });
+    return;
+  }
+  const targetUserId = parsed.data.userId.trim();
+  const role = parsed.data.role as GrantableRole;
+
+  const roles = await db.transaction(async (tx: any) => {
+    // The role register references profiles, so make sure the account has one
+    // even if it has never registered or signed anything.
+    await tx
+      .insert(profilesTable)
+      .values({ id: targetUserId })
+      .onConflictDoNothing();
+
+    const existing = await tx
+      .select({ id: userRolesTable.id })
+      .from(userRolesTable)
+      .where(
+        and(
+          eq(userRolesTable.userId, targetUserId),
+          eq(userRolesTable.role, role),
+          isNull(userRolesTable.revokedAt),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      await tx.insert(userRolesTable).values({
+        userId: targetUserId,
+        role,
+        assignedBy: adminId,
+      });
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: adminId,
+        action: "association.role.granted",
+        recordType: "user_role",
+        recordId: targetUserId,
+        metadata: JSON.stringify({ role, targetUserId }),
+      });
+    }
+
+    return activeRolesFor(tx, targetUserId);
+  });
+
+  res.json(
+    GrantAdminRoleResponse.parse({ userId: targetUserId, roles }),
+  );
+});
+
+router.post("/admin/roles/revoke", async (req, res): Promise<void> => {
+  const adminId = await requireAdministrator(req, res);
+  if (!adminId) return;
+
+  const parsed = RevokeAdminRoleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Provide the account to revoke and a valid association role.",
+    });
+    return;
+  }
+  const targetUserId = parsed.data.userId.trim();
+  const role = parsed.data.role as GrantableRole;
+
+  if (targetUserId === adminId && role === "administrator") {
+    res.status(400).json({
+      error: "You cannot remove your own administrator role.",
+    });
+    return;
+  }
+
+  const roles = await db.transaction(async (tx: any) => {
+    await tx
+      .update(userRolesTable)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(userRolesTable.userId, targetUserId),
+          eq(userRolesTable.role, role),
+          isNull(userRolesTable.revokedAt),
+        ),
+      );
+
+    await tx.insert(auditLogsTable).values({
+      actorUserId: adminId,
+      action: "association.role.revoked",
+      recordType: "user_role",
+      recordId: targetUserId,
+      metadata: JSON.stringify({ role, targetUserId }),
+    });
+
+    return activeRolesFor(tx, targetUserId);
+  });
+
+  res.json(
+    RevokeAdminRoleResponse.parse({ userId: targetUserId, roles }),
+  );
+});
 
 export default router;

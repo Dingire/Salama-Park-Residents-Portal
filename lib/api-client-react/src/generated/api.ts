@@ -28,6 +28,8 @@ import type {
   AdminPetitionSubmission,
   AdminPetitionSubmissionPage,
   AdminRegisterSnapshot,
+  AdminRoleAssignment,
+  AdminRoleRegister,
   ApplicationReviewInput,
   GetAdminApplicationsParams,
   GetAdminPetitionSubmissionsParams,
@@ -46,7 +48,9 @@ import type {
   ResidentApplication,
   ResidentApplicationInput,
   ResidentApplicationStatus,
-  ResidentPetitionReceipt
+  ResidentPetitionReceipt,
+  RoleGrantInput,
+  RoleRevokeInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1919,5 +1923,258 @@ export const useCloseAdminPetitionConfiguration = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCloseAdminPetitionConfigurationMutationOptions(options));
+    }
+
+export const getGetAdminRolesUrl = () => {
+
+
+
+
+  return `/api/admin/roles`
+}
+
+/**
+ * @summary List every account holding an association role
+ */
+export const getAdminRoles = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminRoleRegister> => {
+
+  return customFetch<AdminRoleRegister>(getGetAdminRolesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminRolesQueryKey = () => {
+    return [
+    `/api/admin/roles`
+    ] as const;
+    }
+
+
+export const getGetAdminRolesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminRoles>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminRolesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminRoles>>> = ({ signal }) => getAdminRoles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminRoles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminRolesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminRoles>>>
+export type GetAdminRolesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List every account holding an association role
+ */
+
+export function useGetAdminRoles<TData = Awaited<ReturnType<typeof getAdminRoles>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminRolesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGrantAdminRoleUrl = () => {
+
+
+
+
+  return `/api/admin/roles/grant`
+}
+
+/**
+ * @summary Grant an association role to an account
+ */
+export const grantAdminRole = async (roleGrantInput: RoleGrantInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminRoleAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminRoleAssignment>(getGrantAdminRoleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roleGrantInput)
+  }
+);}
+
+
+
+
+
+export const getGrantAdminRoleMutationKey = () => ['grantAdminRole'] as const;
+
+export const getGrantAdminRoleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantAdminRole>>, TError,GrantAdminRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof grantAdminRole>>, TError,GrantAdminRoleMutationVariables, TContext> => {
+
+const mutationKey = getGrantAdminRoleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof grantAdminRole>>, GrantAdminRoleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  grantAdminRole(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GrantAdminRoleMutationResult = NonNullable<Awaited<ReturnType<typeof grantAdminRole>>>
+    export type GrantAdminRoleMutationBody = BodyType<RoleGrantInput>
+    export type GrantAdminRoleMutationError = ErrorType<void>
+    export type GrantAdminRoleMutationVariables = {data: BodyType<RoleGrantInput>}
+
+    /**
+ * @summary Grant an association role to an account
+ */
+export const useGrantAdminRole = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantAdminRole>>, TError,GrantAdminRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof grantAdminRole>>,
+        TError,
+        GrantAdminRoleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGrantAdminRoleMutationOptions(options));
+    }
+
+export const getRevokeAdminRoleUrl = () => {
+
+
+
+
+  return `/api/admin/roles/revoke`
+}
+
+/**
+ * @summary Revoke an association role from an account
+ */
+export const revokeAdminRole = async (roleRevokeInput: RoleRevokeInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminRoleAssignment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminRoleAssignment>(getRevokeAdminRoleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roleRevokeInput)
+  }
+);}
+
+
+
+
+
+export const getRevokeAdminRoleMutationKey = () => ['revokeAdminRole'] as const;
+
+export const getRevokeAdminRoleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAdminRole>>, TError,RevokeAdminRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeAdminRole>>, TError,RevokeAdminRoleMutationVariables, TContext> => {
+
+const mutationKey = getRevokeAdminRoleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeAdminRole>>, RevokeAdminRoleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  revokeAdminRole(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeAdminRoleMutationResult = NonNullable<Awaited<ReturnType<typeof revokeAdminRole>>>
+    export type RevokeAdminRoleMutationBody = BodyType<RoleRevokeInput>
+    export type RevokeAdminRoleMutationError = ErrorType<void>
+    export type RevokeAdminRoleMutationVariables = {data: BodyType<RoleRevokeInput>}
+
+    /**
+ * @summary Revoke an association role from an account
+ */
+export const useRevokeAdminRole = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAdminRole>>, TError,RevokeAdminRoleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeAdminRole>>,
+        TError,
+        RevokeAdminRoleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeAdminRoleMutationOptions(options));
     }
 

@@ -29,6 +29,9 @@ import {
   useSaveAdminPetitionConfiguration,
   useApproveAdminPetitionConfiguration,
   useCloseAdminPetitionConfiguration,
+  useGetAdminRoles, getGetAdminRolesQueryKey,
+  useGrantAdminRole,
+  useRevokeAdminRole,
 } from '@workspace/api-client-react';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
@@ -93,7 +96,7 @@ const adminCopy: Record<string, string> = {
   '/admin/petitions': 'Petition configuration and consent', '/admin/register-snapshots': 'Approved register snapshots', '/admin/documents': 'Governance document publishing',
   '/admin/resolutions': 'Association resolutions', '/admin/elections': 'Election configuration', '/admin/candidates': 'Candidate register',
   '/admin/results': 'Election results publishing', '/admin/meetings': 'Meetings and minutes', '/admin/announcements': 'Public announcements',
-  '/admin/reports': 'Governance reports', '/admin/audit-logs': 'Administrative audit trail', '/admin/settings': 'Portal configuration',
+  '/admin/reports': 'Governance reports', '/admin/audit-logs': 'Administrative audit trail', '/admin/settings': 'Roles and administrative access',
 };
 
 function Brand({ inverse = false }: { inverse?: boolean }) {
@@ -474,6 +477,7 @@ function AdminPage({path}:{path:string}) {
   const access=useGetAdminAccess({query:{enabled:isSignedIn,queryKey:getGetAdminAccessQueryKey()}});
   const isManagementPage=path==='/admin/members'||path==='/admin/verifications';
   const isReviewer=access.data?.role==='admin'||access.data?.role==='administrator'||access.data?.role==='returning-officer';
+  const isAdmin=access.data?.role==='admin'||access.data?.role==='administrator';
   return <Protected><Show when="signed-in"><AppShell>
     {access.isLoading?<div className="mx-auto max-w-3xl px-5 py-16"><Skeleton rows={2}/></div>
     :access.isError?<div className="mx-auto max-w-3xl px-5 py-16"><ErrorLine retry={()=>access.refetch()}/></div>
@@ -487,6 +491,7 @@ function AdminPage({path}:{path:string}) {
           :path==='/admin/verifications' ? <AdminPetitionPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPollResultsQueryKey()});}}/>
           :path==='/admin/petitions' ? <AdminPetitionConfigurationPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPetitionQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
           :path==='/admin/register-snapshots' ? <AdminRegisterSnapshotsPanel onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
+          :path==='/admin/settings' ? <AdminRolesPanel isAdmin={isAdmin}/>
           :isManagementPage ? <AdminApplicationsPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});}}/>
           :<div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">This workflow is not configured.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">No approved official records are available for this page. Configuration and publishing actions are not enabled until the Association supplies and approves the required rules and source documents.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/documents" className="btn-secondary">View public documents <ArrowUpRight size={14}/></Link><Link href="/announcements" className="btn-secondary">Public notices <ArrowUpRight size={14}/></Link></div></div>}
         </div>
@@ -704,6 +709,70 @@ function AdminPetitionConfigurationPanel({canReview,onChanged}:{canReview:boolea
           {canReview&&current&&current.status!=='closed'&&<button type="button" disabled={close.isPending} onClick={()=>runAction(close,'Closure')} className="btn-secondary disabled:opacity-50">{close.isPending?'Closing…':'Close petition'}</button>}
         </div>
       </form>
+    </div>
+  </div>;
+}
+
+function AdminRolesPanel({isAdmin}:{isAdmin:boolean}) {
+  const queryClient=useQueryClient();
+  const [userId,setUserId]=useState('');
+  const [role,setRole]=useState('administrator');
+  const [message,setMessage]=useState('');
+  const [error,setError]=useState('');
+  const roles=useGetAdminRoles({query:{queryKey:getGetAdminRolesQueryKey(),enabled:isAdmin}});
+  const grant=useGrantAdminRole();
+  const revoke=useRevokeAdminRole();
+  const refresh=()=>queryClient.invalidateQueries({queryKey:getGetAdminRolesQueryKey()});
+  const submit=(event:FormEvent)=>{
+    event.preventDefault();setError('');setMessage('');
+    if(!userId.trim()){setError('Enter the Clerk account ID of the person to promote.');return;}
+    grant.mutate({data:{userId:userId.trim(),role:role as any}},{
+      onSuccess:(saved:any)=>{setMessage(`${saved.userId} now holds: ${(saved.roles??[]).join(', ')||'no roles'}.`);setUserId('');refresh();},
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The role could not be granted.'),
+    });
+  };
+  const remove=(id:string,revokeRole:string)=>revoke.mutate({data:{userId:id,role:revokeRole as any}},{
+    onSuccess:(saved:any)=>{setMessage(`${saved.userId} now holds: ${(saved.roles??[]).join(', ')||'no roles'}.`);refresh();},
+    onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The role could not be revoked.'),
+  });
+  if(!isAdmin)return <div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">Administrator access required.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">Only an association administrator can view or change role assignments.</p></div>;
+  const items=roles.data?.items??[];
+  return <div className="space-y-6">
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h2 className="font-semibold text-[#1c2e44]">Grant an association role</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#687486]">Roles control access to privileged workflows. Paste the person's Clerk account ID (it begins with <code className="rounded bg-[#f2f1ea] px-1">user_</code>). The account gets a profile automatically if it has never registered.</p>
+      <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-medium text-[#33445a] sm:col-span-2">Clerk account ID
+          <input value={userId} onChange={event=>setUserId(event.target.value)} placeholder="user_3KsJLm3CYZhLJXQ3JjcHQ7Fp2IB" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" />
+        </label>
+        <label className="text-sm font-medium text-[#33445a]">Role
+          <select value={role} onChange={event=>setRole(event.target.value)} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">
+            <option value="administrator">Administrator (full access)</option>
+            <option value="returning-officer">Returning Officer</option>
+            <option value="scrutineer">Scrutineer</option>
+            <option value="resident">Resident</option>
+          </select>
+        </label>
+        {error&&<p className="text-sm text-[#a33b3b] sm:col-span-2">{error}</p>}
+        {message&&<p className="text-sm text-[#315f43] sm:col-span-2">{message}</p>}
+        <div className="sm:col-span-2"><button type="submit" disabled={grant.isPending} className="btn-primary disabled:opacity-50">{grant.isPending?'Granting…':'Grant role'} <ArrowRight size={15} /></button></div>
+      </form>
+    </div>
+    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <h2 className="font-semibold text-[#1c2e44]">Current role holders</h2>
+      <p className="mt-2 text-sm leading-6 text-[#687486]">Roles granted through the portal. The bootstrap administrator set by the server environment is not listed here but keeps full access.</p>
+      {roles.isLoading?<div className="mt-4"><Skeleton rows={2}/></div>:roles.isError?<div className="mt-4"><ErrorLine retry={()=>roles.refetch()}/></div>
+      :items.length===0?<p className="mt-3 text-sm text-[#687486]">No roles have been granted through the portal yet.</p>
+      :<div className="mt-4 space-y-3">{items.map((item:any)=><div key={`${item.userId}-${item.role}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e6df] p-4">
+        <div>
+          <p className="font-mono text-sm text-[#1c2e44]">{item.userId}</p>
+          <p className="mt-1 text-xs text-[#738090]"><span className="font-semibold uppercase tracking-wide text-[#477454]">{item.role}</span> · granted {item.assignedAt?new Date(item.assignedAt).toLocaleString():'—'}</p>
+        </div>
+        <button type="button" disabled={revoke.isPending} onClick={()=>remove(item.userId,item.role)} className="btn-secondary disabled:opacity-50">Revoke</button>
+      </div>)}</div>}
+    </div>
+    <div className="rounded-2xl border border-[#e1dfd8] bg-[#fbfaf6] p-5">
+      <p className="text-xs leading-6 text-[#687486]"><span className="font-semibold text-[#33445a]">Administrator:</span> full access to every workflow, including roles. <span className="font-semibold text-[#33445a]">Returning Officer:</span> verifies applications and signatures, and approves or closes the petition. <span className="font-semibold text-[#33445a]">Scrutineer:</span> read access to the administrative views for independent oversight. <span className="font-semibold text-[#33445a]">Resident:</span> the standard member role. You cannot remove your own administrator role.</p>
     </div>
   </div>;
 }

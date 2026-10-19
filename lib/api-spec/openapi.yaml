@@ -495,6 +495,76 @@ paths:
           description: Returning Officer or administrator role required
         "404":
           description: No petition configuration exists to close
+  /admin/roles:
+    get:
+      operationId: getAdminRoles
+      tags: [resident]
+      summary: List every account holding an association role
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Active role assignments, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRoleRegister"
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
+  /admin/roles/grant:
+    post:
+      operationId: grantAdminRole
+      tags: [resident]
+      summary: Grant an association role to an account
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleGrantInput"
+      responses:
+        "200":
+          description: The role assignments for that account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRoleAssignment"
+        "400":
+          description: Invalid user or role
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
+  /admin/roles/revoke:
+    post:
+      operationId: revokeAdminRole
+      tags: [resident]
+      summary: Revoke an association role from an account
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleRevokeInput"
+      responses:
+        "200":
+          description: The remaining role assignments for that account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRoleAssignment"
+        "400":
+          description: Invalid request, or an attempt to remove your own administrator role
+        "401":
+          description: Authentication required
+        "403":
+          description: Association administrator role required
 components:
   securitySchemes:
     clerkSession:
@@ -1093,4 +1163,47 @@ components:
           type: string
           enum: [not-configured, scheduled, open, closed]
         signingEnabled: { type: boolean }
+    AdminRoleAssignment:
+      type: object
+      required: [userId, roles]
+      properties:
+        userId: { type: string }
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssociationRole"
+    AdminRoleRegister:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminRoleHolder"
+    AdminRoleHolder:
+      type: object
+      required: [userId, role, assignedAt]
+      properties:
+        userId: { type: string }
+        role:
+          $ref: "#/components/schemas/AssociationRole"
+        assignedBy: { type: ["string", "null"] }
+        assignedAt: { type: string, format: date-time }
+    AssociationRole:
+      type: string
+      enum: [resident, returning-officer, scrutineer, administrator]
+    RoleGrantInput:
+      type: object
+      required: [userId, role]
+      properties:
+        userId: { type: string, minLength: 1, maxLength: 200 }
+        role:
+          $ref: "#/components/schemas/AssociationRole"
+    RoleRevokeInput:
+      type: object
+      required: [userId, role]
+      properties:
+        userId: { type: string, minLength: 1, maxLength: 200 }
+        role:
+          $ref: "#/components/schemas/AssociationRole"
 
