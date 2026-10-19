@@ -295,15 +295,29 @@ function ApplicationPage() {
     </div>}
   </div><aside className="space-y-4"><div className="rounded-2xl bg-[#172b45] p-6 text-white"><Eyebrow inverse>Important</Eyebrow><h3 className="serif text-xl font-bold">Application is not approval.</h3><p className="mt-3 text-sm leading-6 text-white/65">An association reviewer must verify your information. Keep your reference for future correspondence.</p></div><Link href="/privacy" className="flex items-center justify-between rounded-xl border border-[#e1dfd8] bg-white p-4 text-sm font-semibold text-[#35485c]">Read privacy notice <ArrowUpRight size={16} /></Link></aside></div></ResidentLayout>;
 }
+const residentCopy: Record<string, [string, string]> = {
+  '/resident/dashboard': ['Your resident portal', 'Your association actions and current application status.'],
+  '/resident/profile': ['My profile', 'Account details from your signed-in profile.'],
+  '/resident/application': ['Membership application', "Complete the association's registration form for review."],
+  '/resident/petition': ['Petition consent', 'Review the published versions before any declaration.'],
+  '/resident/voting': ['Voting', 'Election eligibility and voting access.'],
+  '/resident/receipts': ['Private receipts', 'Your submitted application and consent receipts.'],
+  '/resident/notifications': ['Notifications', 'Association messages and your notification preferences.'],
+};
+
+/**
+ * Heading and description for a resident page.
+ *
+ * Every entry in the resident route list must exist here: a missing key used to
+ * make this destructuring throw, which the error boundary turned into
+ * "Something went wrong" for the whole page.
+ */
+function residentPageCopy(path: string): [string, string] {
+  return residentCopy[path] ?? ["Your resident portal", 'Your association actions and current status.'];
+}
+
 function ResidentPage({ path }: { path: string }) {
-  const [heading, description] = ({
-    '/resident/dashboard': ['Your resident portal', 'Your association actions and current application status.'],
-    '/resident/profile': ['My profile', 'Account details from your signed-in profile.'],
-    '/resident/petition': ['Petition consent', 'Review the published versions before any declaration.'],
-    '/resident/voting': ['Voting', 'Election eligibility and voting access.'],
-    '/resident/receipts': ['Private receipts', 'Your submitted application and consent receipts.'],
-    '/resident/notifications': ['Notifications', 'Association messages and your notification preferences.'],
-  } as Record<string,string[]>)[path];
+  const [heading, description] = residentPageCopy(path);
   const queryClient = useQueryClient();
   const { isSignedIn } = useUser();
   const app = useGetMyResidentApplication({ query: { enabled: isSignedIn, queryKey: getGetMyResidentApplicationQueryKey() } });
