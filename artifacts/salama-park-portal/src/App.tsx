@@ -246,7 +246,7 @@ function PetitionDetails({ petition, loading, error, retry }: { petition?: any; 
   if (error) return <ErrorLine retry={retry} />;
   if (!petition || petition.status === 'not-configured') return <EmptyPanel title="Petition not configured" text="No approved constitution or petition version is currently available. Signing is unavailable until the association publishes the exact documents, eligibility terms and petition configuration." />;
   const basePath = (import.meta as any).env?.BASE_PATH || '/';
-  const docUrl = `${basePath.replace(/\/$/, '')}/documents/salama-park-petition-for-adoption-of-draft-constitution.md`;
+  const docUrl = `${basePath.replace(/\/$/, '')}/documents/salama-park-petition-for-adoption-of-draft-constitution.pdf`;
   return <div className="grid gap-6 lg:grid-cols-[1fr_340px]"><div className="space-y-5"><div className="rounded-2xl border border-[#e1dfd8] bg-white p-6"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#477454]"><span className="size-2 rounded-full bg-[#6a9c71]" />{petition.status}</div><h2 className="serif mt-3 text-2xl font-bold text-[#192d45]">Petition information</h2><p className="mt-3 text-sm leading-7 text-[#647083]">{petition.eligibilityText || 'Eligibility terms have not been published.'}</p>
     <div className="mt-4 rounded-xl border border-[#e1dfd8] bg-[#f7f7f4] p-4">
       <h3 className="font-semibold text-[#192d45]">Petition summary</h3>
