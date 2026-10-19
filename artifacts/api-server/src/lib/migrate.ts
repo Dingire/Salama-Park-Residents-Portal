@@ -34,7 +34,12 @@ export async function runMigrations(): Promise<void> {
     await migrate(db, { migrationsFolder });
     logger.info({ migrationsFolder }, "Database migrations applied");
   } catch (err: any) {
-    const message = String(err?.message ?? err);
+    // Drizzle wraps the Postgres error: "already exists" lives on the cause,
+    // not on the top-level message, so both have to be inspected.
+    const message = [
+      String(err?.message ?? err),
+      String(err?.cause?.message ?? ""),
+    ].join(" ");
     if (message.includes("already exists")) {
       logger.warn({ err }, "Migrations skipped: schema objects already exist");
       return;
