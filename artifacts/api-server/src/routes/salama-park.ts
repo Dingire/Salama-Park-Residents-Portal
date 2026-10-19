@@ -32,6 +32,7 @@ import {
   reviewerRoles,
 } from "../lib/auth";
 import { pushToGoogleSheets } from "../lib/google-sheets";
+import { isUniqueViolation } from "../lib/pg-errors";
 import {
   GetMyResidentApplicationResponse,
   GetMyPetitionReceiptsResponse,
@@ -656,11 +657,7 @@ router.post("/resident/application", async (req, res): Promise<void> => {
       },
     });
   } catch (error) {
-    const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? error.code
-        : undefined;
-    if (code === "23505") {
+    if (isUniqueViolation(error)) {
       res.status(409).json({
         error: "An application already exists for this account. Check its status from your resident dashboard.",
       });
@@ -778,11 +775,7 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
       },
     });
   } catch (error) {
-    const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? error.code
-        : undefined;
-    if (code === "23505") {
+    if (isUniqueViolation(error)) {
       res.status(409).json({
         error: "An active signature has already been recorded for this petition.",
       });
