@@ -49,6 +49,46 @@ export const householdType = pgEnum("household_type", [
   "tenant",
 ]);
 
+export const gender = pgEnum("gender", ["male", "female", "other"]);
+
+export const residencyStatus = pgEnum("residency_status", [
+  "owner-occupier",
+  "tenant",
+  "owner-landlord",
+  "family-member",
+]);
+
+export const membershipCategory = pgEnum("membership_category", [
+  "full",
+  "associate",
+  "honorary",
+]);
+
+export const reliefOption = pgEnum("relief_option", [
+  "yes",
+  "no",
+  "not-applicable",
+]);
+
+export const paymentMethod = pgEnum("payment_method", [
+  "mobile-money",
+  "bank-transfer",
+  "cash",
+]);
+
+export const preferredLanguage = pgEnum("preferred_language", [
+  "english",
+  "nyanja",
+  "bemba",
+  "tonga",
+  "other",
+]);
+
+export const applicationRejectionCategory = pgEnum(
+  "application_rejection_category",
+  ["duplicate", "not-resident", "incomplete-declaration", "other"],
+);
+
 export const documentPublicationStatus = pgEnum(
   "document_publication_status",
   ["draft", "approved", "published", "archived"],
@@ -108,6 +148,77 @@ export const membershipApplicationsTable = pgTable(
       .notNull()
       .default("pending-verification"),
     livesInSalamaPark: boolean("lives_in_salama_park").notNull(),
+    // Section A — Personal identification
+    nrcNumber: text("nrc_number"),
+    passportNumber: text("passport_number"),
+    dateOfBirth: text("date_of_birth"),
+    gender: gender("gender"),
+    nationality: text("nationality"),
+    phoneAlt: text("phone_alt"),
+    plotNumber: text("plot_number"),
+    // Section B — Residency
+    residencyStatus: residencyStatus("residency_status"),
+    residencySince: text("residency_since"),
+    ownsProperty: boolean("owns_property").notNull().default(false),
+    propertyPlots: text("property_plots"),
+    wardRegisteredVoter: boolean("ward_registered_voter"),
+    // Section C — Membership category
+    membershipCategory: membershipCategory("membership_category"),
+    admittedAt: timestamp("admitted_at", { withTimezone: true }),
+    membershipNumber: text("membership_number"),
+    otherAssociationMember: boolean("other_association_member"),
+    otherAssociationName: text("other_association_name"),
+    // Section D — Subscription poll
+    subscriptionVote: subscriptionVote("subscription_vote"),
+    agreeToPayAdopted: boolean("agree_to_pay_adopted").notNull().default(false),
+    reliefOption: reliefOption("relief_option"),
+    paymentMethod: paymentMethod("payment_method"),
+    // Section E — Declarations and signature
+    declarationConfirmResident: boolean("declaration_confirm_resident")
+      .notNull()
+      .default(false),
+    declarationReadConstitution: boolean("declaration_read_constitution")
+      .notNull()
+      .default(false),
+    declarationMemberRegister: boolean("declaration_member_register")
+      .notNull()
+      .default(false),
+    declarationVoterRoll: boolean("declaration_voter_roll")
+      .notNull()
+      .default(false),
+    declarationContactConsent: boolean("declaration_contact_consent")
+      .notNull()
+      .default(false),
+    declarationNoSubscription: boolean("declaration_no_subscription")
+      .notNull()
+      .default(false),
+    declarationUndertakePayment: boolean("declaration_undertake_payment")
+      .notNull()
+      .default(false),
+    declarationUnderstandRelief: boolean("declaration_understand_relief")
+      .notNull()
+      .default(false),
+    signatureName: text("signature_name"),
+    // Section F — Verification (association officials only)
+    receivedBy: text("received_by"),
+    verifiedAgainstNrc: boolean("verified_against_nrc"),
+    rejectionCategory: applicationRejectionCategory("rejection_category"),
+    verificationNotes: text("verification_notes"),
+    // Section G — Associate and honorary members
+    principalResidenceAddress: text("principal_residence_address"),
+    associationBasis: text("association_basis"),
+    nominatedBy: text("nominated_by"),
+    // Section H — Optional planning and skills
+    occupation: text("occupation"),
+    willingToVolunteer: boolean("willing_to_volunteer").notNull().default(false),
+    volunteerSkills: text("volunteer_skills"),
+    accessNeeds: text("access_needs"),
+    preferredLanguage: preferredLanguage("preferred_language"),
+    // Additional household and emergency details
+    adultsInHousehold: integer("adults_in_household"),
+    emergencyContactName: text("emergency_contact_name"),
+    emergencyContactPhone: text("emergency_contact_phone"),
+    emergencyContactRelationship: text("emergency_contact_relationship"),
     privacyNoticeAcceptedAt: timestamp("privacy_notice_accepted_at", {
       withTimezone: true,
     }).notNull(),

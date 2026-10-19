@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PetitionReceiptSubscriptionVote = typeof PetitionReceiptSubscriptionVote[keyof typeof PetitionReceiptSubscriptionVote];
+/**
+ * @nullable
+ */
+export type PetitionReceiptSubscriptionVote = typeof PetitionReceiptSubscriptionVote[keyof typeof PetitionReceiptSubscriptionVote] | null;
 
 
 export const PetitionReceiptSubscriptionVote = {

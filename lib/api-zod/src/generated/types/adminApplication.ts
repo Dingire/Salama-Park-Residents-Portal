@@ -5,7 +5,12 @@
  * Salama Park Residents Association governance portal API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminApplicationGender } from './adminApplicationGender';
+import type { AdminApplicationMembershipCategory } from './adminApplicationMembershipCategory';
+import type { AdminApplicationRejectionCategory } from './adminApplicationRejectionCategory';
+import type { AdminApplicationResidencyStatus } from './adminApplicationResidencyStatus';
 import type { AdminApplicationStatus } from './adminApplicationStatus';
+import type { AdminApplicationSubscriptionVote } from './adminApplicationSubscriptionVote';
 
 export interface AdminApplication {
   id: string;
@@ -20,4 +25,36 @@ export interface AdminApplication {
   submittedAt: Date;
   /** @nullable */
   decisionReason: string | null;
+  /** @nullable */
+  nrcNumber?: string | null;
+  /** @nullable */
+  passportNumber?: string | null;
+  /** @nullable */
+  dateOfBirth?: string | null;
+  /** @nullable */
+  gender?: AdminApplicationGender;
+  /** @nullable */
+  nationality?: string | null;
+  /** @nullable */
+  residencyStatus?: AdminApplicationResidencyStatus;
+  /** @nullable */
+  residencySince?: string | null;
+  /** @nullable */
+  ownsProperty?: boolean | null;
+  /** @nullable */
+  membershipCategory?: AdminApplicationMembershipCategory;
+  /** @nullable */
+  subscriptionVote?: AdminApplicationSubscriptionVote;
+  /** @nullable */
+  membershipNumber?: string | null;
+  /** @nullable */
+  admittedAt?: Date | null;
+  /** @nullable */
+  receivedBy?: string | null;
+  /** @nullable */
+  verifiedAgainstNrc?: boolean | null;
+  /** @nullable */
+  rejectionCategory?: AdminApplicationRejectionCategory;
+  /** @nullable */
+  verificationNotes?: string | null;
 }

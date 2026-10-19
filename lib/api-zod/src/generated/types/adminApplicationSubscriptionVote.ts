@@ -9,10 +9,10 @@
 /**
  * @nullable
  */
-export type AdminPetitionSubmissionSubscriptionVote = typeof AdminPetitionSubmissionSubscriptionVote[keyof typeof AdminPetitionSubmissionSubscriptionVote] | null;
+export type AdminApplicationSubscriptionVote = typeof AdminApplicationSubscriptionVote[keyof typeof AdminApplicationSubscriptionVote] | null;
 
 
-export const AdminPetitionSubmissionSubscriptionVote = {
+export const AdminApplicationSubscriptionVote = {
   k50: 'k50',
   k100: 'k100',
   k150: 'k150',

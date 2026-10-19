@@ -14,5 +14,6 @@ export interface PetitionReceipt {
   constitutionVersion: string;
   petitionVersion: string;
   status: PetitionReceiptStatus;
-  subscriptionVote: PetitionReceiptSubscriptionVote;
+  /** @nullable */
+  subscriptionVote?: PetitionReceiptSubscriptionVote;
 }

@@ -5,6 +5,7 @@
  * Salama Park Residents Association governance portal API
  * OpenAPI spec version: 0.1.0
  */
+import type { ApplicationReviewInputRejectionCategory } from './applicationReviewInputRejectionCategory';
 import type { ApplicationReviewInputStatus } from './applicationReviewInputStatus';
 
 export interface ApplicationReviewInput {
@@ -14,4 +15,18 @@ export interface ApplicationReviewInput {
      * @maxLength 1000
      */
   reason: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  receivedBy?: string | null;
+  /** @nullable */
+  verifiedAgainstNrc?: boolean | null;
+  /** @nullable */
+  rejectionCategory?: ApplicationReviewInputRejectionCategory;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  verificationNotes?: string | null;
 }

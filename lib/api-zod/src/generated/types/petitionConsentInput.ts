@@ -5,8 +5,6 @@
  * Salama Park Residents Association governance portal API
  * OpenAPI spec version: 0.1.0
  */
-import type { PetitionConsentInputHouseholdType } from './petitionConsentInputHouseholdType';
-import type { PetitionConsentInputSubscriptionVote } from './petitionConsentInputSubscriptionVote';
 
 export interface PetitionConsentInput {
   readConstitution: boolean;
@@ -16,34 +14,4 @@ export interface PetitionConsentInput {
   understandFoundingProvisions: boolean;
   understandWithdrawal: boolean;
   voluntary: boolean;
-  subscriptionVote: PetitionConsentInputSubscriptionVote;
-  onlineVotingConsent: boolean;
-  willingToVolunteer: boolean;
-  /**
-     * @maxLength 500
-     * @nullable
-     */
-  volunteerSkills?: string | null;
-  householdType: PetitionConsentInputHouseholdType;
-  /**
-     * @minimum 1
-     * @maximum 30
-     * @nullable
-     */
-  adultsInHousehold?: number | null;
-  /**
-     * @minLength 2
-     * @maxLength 160
-     */
-  emergencyContactName: string;
-  /**
-     * @minLength 5
-     * @maxLength 40
-     */
-  emergencyContactPhone: string;
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  emergencyContactRelationship: string;
 }

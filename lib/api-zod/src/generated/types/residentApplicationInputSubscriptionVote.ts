@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PetitionConsentInputSubscriptionVote = typeof PetitionConsentInputSubscriptionVote[keyof typeof PetitionConsentInputSubscriptionVote];
+export type ResidentApplicationInputSubscriptionVote = typeof ResidentApplicationInputSubscriptionVote[keyof typeof ResidentApplicationInputSubscriptionVote];
 
 
-export const PetitionConsentInputSubscriptionVote = {
+export const ResidentApplicationInputSubscriptionVote = {
   k50: 'k50',
   k100: 'k100',
   k150: 'k150',

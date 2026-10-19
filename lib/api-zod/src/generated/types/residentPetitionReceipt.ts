@@ -15,5 +15,5 @@ export interface ResidentPetitionReceipt {
   petitionVersion: string;
   status: ResidentPetitionReceiptStatus;
   /** @nullable */
-  subscriptionVote: ResidentPetitionReceiptSubscriptionVote;
+  subscriptionVote?: ResidentPetitionReceiptSubscriptionVote;
 }

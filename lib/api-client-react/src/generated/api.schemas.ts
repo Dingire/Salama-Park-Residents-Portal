@@ -92,6 +92,78 @@ export interface PublicPetition {
   proposedThreshold: number | null;
 }
 
+export type ResidentApplicationInputGender = typeof ResidentApplicationInputGender[keyof typeof ResidentApplicationInputGender];
+
+
+export const ResidentApplicationInputGender = {
+  male: 'male',
+  female: 'female',
+  other: 'other',
+} as const;
+
+export type ResidentApplicationInputResidencyStatus = typeof ResidentApplicationInputResidencyStatus[keyof typeof ResidentApplicationInputResidencyStatus];
+
+
+export const ResidentApplicationInputResidencyStatus = {
+  'owner-occupier': 'owner-occupier',
+  tenant: 'tenant',
+  'owner-landlord': 'owner-landlord',
+  'family-member': 'family-member',
+} as const;
+
+export type ResidentApplicationInputMembershipCategory = typeof ResidentApplicationInputMembershipCategory[keyof typeof ResidentApplicationInputMembershipCategory];
+
+
+export const ResidentApplicationInputMembershipCategory = {
+  full: 'full',
+  associate: 'associate',
+  honorary: 'honorary',
+} as const;
+
+export type ResidentApplicationInputSubscriptionVote = typeof ResidentApplicationInputSubscriptionVote[keyof typeof ResidentApplicationInputSubscriptionVote];
+
+
+export const ResidentApplicationInputSubscriptionVote = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
+export type ResidentApplicationInputReliefOption = typeof ResidentApplicationInputReliefOption[keyof typeof ResidentApplicationInputReliefOption];
+
+
+export const ResidentApplicationInputReliefOption = {
+  yes: 'yes',
+  no: 'no',
+  'not-applicable': 'not-applicable',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ResidentApplicationInputPaymentMethod = typeof ResidentApplicationInputPaymentMethod[keyof typeof ResidentApplicationInputPaymentMethod] | null;
+
+
+export const ResidentApplicationInputPaymentMethod = {
+  'mobile-money': 'mobile-money',
+  'bank-transfer': 'bank-transfer',
+  cash: 'cash',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ResidentApplicationInputPreferredLanguage = typeof ResidentApplicationInputPreferredLanguage[keyof typeof ResidentApplicationInputPreferredLanguage] | null;
+
+
+export const ResidentApplicationInputPreferredLanguage = {
+  english: 'english',
+  nyanja: 'nyanja',
+  bemba: 'bemba',
+  tonga: 'tonga',
+  other: 'other',
+} as const;
+
 export type ResidentApplicationInputPreferredNotification = typeof ResidentApplicationInputPreferredNotification[keyof typeof ResidentApplicationInputPreferredNotification];
 
 
@@ -108,10 +180,41 @@ export interface ResidentApplicationInput {
      */
   fullName: string;
   /**
-     * @maxLength 80
+     * @maxLength 40
      * @nullable
      */
-  identityReference?: string | null;
+  nrcNumber?: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  passportNumber?: string | null;
+  /**
+     * @minLength 8
+     * @maxLength 10
+     */
+  dateOfBirth: string;
+  gender: ResidentApplicationInputGender;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  nationality: string;
+  /**
+     * @minLength 5
+     * @maxLength 40
+     */
+  phone: string;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  phoneAlt?: string | null;
+  /**
+     * @maxLength 254
+     * @nullable
+     */
+  email?: string | null;
   /**
      * @minLength 1
      * @maxLength 80
@@ -123,16 +226,106 @@ export interface ResidentApplicationInput {
      */
   streetOrZone: string;
   /**
-     * @minLength 5
-     * @maxLength 40
-     */
-  phone: string;
-  /**
-     * @maxLength 254
+     * @maxLength 80
      * @nullable
      */
-  email?: string | null;
+  plotNumber?: string | null;
   livesInSalamaPark: boolean;
+  residencyStatus: ResidentApplicationInputResidencyStatus;
+  /**
+     * @minLength 4
+     * @maxLength 32
+     */
+  residencySince: string;
+  ownsProperty: boolean;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  propertyPlots?: string | null;
+  /** @nullable */
+  wardRegisteredVoter?: boolean | null;
+  membershipCategory: ResidentApplicationInputMembershipCategory;
+  /** @nullable */
+  otherAssociationMember?: boolean | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  otherAssociationName?: string | null;
+  subscriptionVote: ResidentApplicationInputSubscriptionVote;
+  agreeToPayAdopted: boolean;
+  reliefOption: ResidentApplicationInputReliefOption;
+  /** @nullable */
+  paymentMethod?: ResidentApplicationInputPaymentMethod;
+  declarationConfirmResident: boolean;
+  declarationReadConstitution: boolean;
+  declarationMemberRegister: boolean;
+  declarationVoterRoll: boolean;
+  declarationContactConsent: boolean;
+  declarationNoSubscription: boolean;
+  declarationUndertakePayment: boolean;
+  declarationUnderstandRelief: boolean;
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  signatureName: string;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  principalResidenceAddress?: string | null;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  associationBasis?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  nominatedBy?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  occupation?: string | null;
+  /** @nullable */
+  willingToVolunteer?: boolean | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  volunteerSkills?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  accessNeeds?: string | null;
+  /** @nullable */
+  preferredLanguage?: ResidentApplicationInputPreferredLanguage;
+  /**
+     * @minimum 1
+     * @maximum 30
+     * @nullable
+     */
+  adultsInHousehold?: number | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  emergencyContactName?: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  emergencyContactPhone?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  emergencyContactRelationship?: string | null;
   preferredNotification: ResidentApplicationInputPreferredNotification;
   privacyNoticeAccepted: boolean;
 }
@@ -147,33 +340,30 @@ export const ResidentApplicationStatusProperty = {
   rejected: 'rejected',
 } as const;
 
-export interface ResidentApplication {
-  id: string;
-  reference: string;
-  status: ResidentApplicationStatusProperty;
-  submittedAt: string;
-}
-
-export interface ResidentApplicationStatus {
-  application: ResidentApplication | null;
-}
-
-export type PetitionConsentInputSubscriptionVote = typeof PetitionConsentInputSubscriptionVote[keyof typeof PetitionConsentInputSubscriptionVote];
+/**
+ * @nullable
+ */
+export type ResidentApplicationSubscriptionVote = typeof ResidentApplicationSubscriptionVote[keyof typeof ResidentApplicationSubscriptionVote] | null;
 
 
-export const PetitionConsentInputSubscriptionVote = {
+export const ResidentApplicationSubscriptionVote = {
   k50: 'k50',
   k100: 'k100',
   k150: 'k150',
 } as const;
 
-export type PetitionConsentInputHouseholdType = typeof PetitionConsentInputHouseholdType[keyof typeof PetitionConsentInputHouseholdType];
+export interface ResidentApplication {
+  id: string;
+  reference: string;
+  status: ResidentApplicationStatusProperty;
+  submittedAt: string;
+  /** @nullable */
+  subscriptionVote: ResidentApplicationSubscriptionVote;
+}
 
-
-export const PetitionConsentInputHouseholdType = {
-  homeowner: 'homeowner',
-  tenant: 'tenant',
-} as const;
+export interface ResidentApplicationStatus {
+  application: ResidentApplication | null;
+}
 
 export interface PetitionConsentInput {
   readConstitution: boolean;
@@ -183,36 +373,6 @@ export interface PetitionConsentInput {
   understandFoundingProvisions: boolean;
   understandWithdrawal: boolean;
   voluntary: boolean;
-  subscriptionVote: PetitionConsentInputSubscriptionVote;
-  onlineVotingConsent: boolean;
-  willingToVolunteer: boolean;
-  /**
-     * @maxLength 500
-     * @nullable
-     */
-  volunteerSkills?: string | null;
-  householdType: PetitionConsentInputHouseholdType;
-  /**
-     * @minimum 1
-     * @maximum 30
-     * @nullable
-     */
-  adultsInHousehold?: number | null;
-  /**
-     * @minLength 2
-     * @maxLength 160
-     */
-  emergencyContactName: string;
-  /**
-     * @minLength 5
-     * @maxLength 40
-     */
-  emergencyContactPhone: string;
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  emergencyContactRelationship: string;
 }
 
 export type PetitionReceiptStatus = typeof PetitionReceiptStatus[keyof typeof PetitionReceiptStatus];
@@ -222,7 +382,10 @@ export const PetitionReceiptStatus = {
   accepted: 'accepted',
 } as const;
 
-export type PetitionReceiptSubscriptionVote = typeof PetitionReceiptSubscriptionVote[keyof typeof PetitionReceiptSubscriptionVote];
+/**
+ * @nullable
+ */
+export type PetitionReceiptSubscriptionVote = typeof PetitionReceiptSubscriptionVote[keyof typeof PetitionReceiptSubscriptionVote] | null;
 
 
 export const PetitionReceiptSubscriptionVote = {
@@ -237,7 +400,8 @@ export interface PetitionReceipt {
   constitutionVersion: string;
   petitionVersion: string;
   status: PetitionReceiptStatus;
-  subscriptionVote: PetitionReceiptSubscriptionVote;
+  /** @nullable */
+  subscriptionVote?: PetitionReceiptSubscriptionVote;
 }
 
 export type ResidentPetitionReceiptStatus = typeof ResidentPetitionReceiptStatus[keyof typeof ResidentPetitionReceiptStatus];
@@ -269,7 +433,7 @@ export interface ResidentPetitionReceipt {
   petitionVersion: string;
   status: ResidentPetitionReceiptStatus;
   /** @nullable */
-  subscriptionVote: ResidentPetitionReceiptSubscriptionVote;
+  subscriptionVote?: ResidentPetitionReceiptSubscriptionVote;
 }
 
 export type PetitionWithdrawalStatus = typeof PetitionWithdrawalStatus[keyof typeof PetitionWithdrawalStatus];
@@ -383,6 +547,68 @@ export const AdminApplicationStatus = {
   rejected: 'rejected',
 } as const;
 
+/**
+ * @nullable
+ */
+export type AdminApplicationGender = typeof AdminApplicationGender[keyof typeof AdminApplicationGender] | null;
+
+
+export const AdminApplicationGender = {
+  male: 'male',
+  female: 'female',
+  other: 'other',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminApplicationResidencyStatus = typeof AdminApplicationResidencyStatus[keyof typeof AdminApplicationResidencyStatus] | null;
+
+
+export const AdminApplicationResidencyStatus = {
+  'owner-occupier': 'owner-occupier',
+  tenant: 'tenant',
+  'owner-landlord': 'owner-landlord',
+  'family-member': 'family-member',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminApplicationMembershipCategory = typeof AdminApplicationMembershipCategory[keyof typeof AdminApplicationMembershipCategory] | null;
+
+
+export const AdminApplicationMembershipCategory = {
+  full: 'full',
+  associate: 'associate',
+  honorary: 'honorary',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminApplicationSubscriptionVote = typeof AdminApplicationSubscriptionVote[keyof typeof AdminApplicationSubscriptionVote] | null;
+
+
+export const AdminApplicationSubscriptionVote = {
+  k50: 'k50',
+  k100: 'k100',
+  k150: 'k150',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminApplicationRejectionCategory = typeof AdminApplicationRejectionCategory[keyof typeof AdminApplicationRejectionCategory] | null;
+
+
+export const AdminApplicationRejectionCategory = {
+  duplicate: 'duplicate',
+  'not-resident': 'not-resident',
+  'incomplete-declaration': 'incomplete-declaration',
+  other: 'other',
+} as const;
+
 export interface AdminApplication {
   id: string;
   reference: string;
@@ -396,6 +622,38 @@ export interface AdminApplication {
   submittedAt: string;
   /** @nullable */
   decisionReason: string | null;
+  /** @nullable */
+  nrcNumber?: string | null;
+  /** @nullable */
+  passportNumber?: string | null;
+  /** @nullable */
+  dateOfBirth?: string | null;
+  /** @nullable */
+  gender?: AdminApplicationGender;
+  /** @nullable */
+  nationality?: string | null;
+  /** @nullable */
+  residencyStatus?: AdminApplicationResidencyStatus;
+  /** @nullable */
+  residencySince?: string | null;
+  /** @nullable */
+  ownsProperty?: boolean | null;
+  /** @nullable */
+  membershipCategory?: AdminApplicationMembershipCategory;
+  /** @nullable */
+  subscriptionVote?: AdminApplicationSubscriptionVote;
+  /** @nullable */
+  membershipNumber?: string | null;
+  /** @nullable */
+  admittedAt?: string | null;
+  /** @nullable */
+  receivedBy?: string | null;
+  /** @nullable */
+  verifiedAgainstNrc?: boolean | null;
+  /** @nullable */
+  rejectionCategory?: AdminApplicationRejectionCategory;
+  /** @nullable */
+  verificationNotes?: string | null;
 }
 
 export interface AdminApplicationPage {
@@ -414,6 +672,19 @@ export const ApplicationReviewInputStatus = {
   rejected: 'rejected',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ApplicationReviewInputRejectionCategory = typeof ApplicationReviewInputRejectionCategory[keyof typeof ApplicationReviewInputRejectionCategory] | null;
+
+
+export const ApplicationReviewInputRejectionCategory = {
+  duplicate: 'duplicate',
+  'not-resident': 'not-resident',
+  'incomplete-declaration': 'incomplete-declaration',
+  other: 'other',
+} as const;
+
 export interface ApplicationReviewInput {
   status: ApplicationReviewInputStatus;
   /**
@@ -421,6 +692,20 @@ export interface ApplicationReviewInput {
      * @maxLength 1000
      */
   reason: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  receivedBy?: string | null;
+  /** @nullable */
+  verifiedAgainstNrc?: boolean | null;
+  /** @nullable */
+  rejectionCategory?: ApplicationReviewInputRejectionCategory;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  verificationNotes?: string | null;
 }
 
 /**
@@ -461,29 +746,6 @@ export interface PublicPollResults {
   onlineVotingConsent: number;
 }
 
-/**
- * @nullable
- */
-export type AdminPetitionSubmissionSubscriptionVote = typeof AdminPetitionSubmissionSubscriptionVote[keyof typeof AdminPetitionSubmissionSubscriptionVote] | null;
-
-
-export const AdminPetitionSubmissionSubscriptionVote = {
-  k50: 'k50',
-  k100: 'k100',
-  k150: 'k150',
-} as const;
-
-/**
- * @nullable
- */
-export type AdminPetitionSubmissionHouseholdType = typeof AdminPetitionSubmissionHouseholdType[keyof typeof AdminPetitionSubmissionHouseholdType] | null;
-
-
-export const AdminPetitionSubmissionHouseholdType = {
-  homeowner: 'homeowner',
-  tenant: 'tenant',
-} as const;
-
 export type AdminPetitionSubmissionStatus = typeof AdminPetitionSubmissionStatus[keyof typeof AdminPetitionSubmissionStatus];
 
 
@@ -502,22 +764,6 @@ export interface AdminPetitionSubmission {
   houseNumber: string;
   streetOrZone: string;
   phone: string;
-  /** @nullable */
-  subscriptionVote: AdminPetitionSubmissionSubscriptionVote;
-  onlineVotingConsent: boolean;
-  willingToVolunteer: boolean;
-  /** @nullable */
-  volunteerSkills: string | null;
-  /** @nullable */
-  householdType: AdminPetitionSubmissionHouseholdType;
-  /** @nullable */
-  adultsInHousehold: number | null;
-  /** @nullable */
-  emergencyContactName: string | null;
-  /** @nullable */
-  emergencyContactPhone: string | null;
-  /** @nullable */
-  emergencyContactRelationship: string | null;
   status: AdminPetitionSubmissionStatus;
   /** @nullable */
   onMembersRegister: boolean | null;

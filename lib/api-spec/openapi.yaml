@@ -486,21 +486,101 @@ components:
         - livesInSalamaPark
         - preferredNotification
         - privacyNoticeAccepted
+        - dateOfBirth
+        - gender
+        - nationality
+        - residencyStatus
+        - residencySince
+        - ownsProperty
+        - membershipCategory
+        - subscriptionVote
+        - agreeToPayAdopted
+        - reliefOption
+        - declarationConfirmResident
+        - declarationReadConstitution
+        - declarationMemberRegister
+        - declarationVoterRoll
+        - declarationContactConsent
+        - declarationNoSubscription
+        - declarationUndertakePayment
+        - declarationUnderstandRelief
+        - signatureName
       properties:
+        # Section A — Personal identification
         fullName: { type: string, minLength: 2, maxLength: 160 }
-        identityReference: { type: ["string", "null"], maxLength: 80 }
+        nrcNumber: { type: ["string", "null"], maxLength: 40 }
+        passportNumber: { type: ["string", "null"], maxLength: 40 }
+        dateOfBirth: { type: string, minLength: 8, maxLength: 10 }
+        gender:
+          type: string
+          enum: [male, female, other]
+        nationality: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string, minLength: 5, maxLength: 40 }
+        phoneAlt: { type: ["string", "null"], maxLength: 40 }
+        email: { type: ["string", "null"], format: email, maxLength: 254 }
         houseNumber: { type: string, minLength: 1, maxLength: 80 }
         streetOrZone: { type: string, minLength: 1, maxLength: 120 }
-        phone: { type: string, minLength: 5, maxLength: 40 }
-        email: { type: ["string", "null"], format: email, maxLength: 254 }
+        plotNumber: { type: ["string", "null"], maxLength: 80 }
+        # Section B — Residency
         livesInSalamaPark: { type: boolean }
+        residencyStatus:
+          type: string
+          enum: [owner-occupier, tenant, owner-landlord, family-member]
+        residencySince: { type: string, minLength: 4, maxLength: 32 }
+        ownsProperty: { type: boolean }
+        propertyPlots: { type: ["string", "null"], maxLength: 200 }
+        wardRegisteredVoter: { type: ["boolean", "null"] }
+        # Section C — Membership category
+        membershipCategory:
+          type: string
+          enum: [full, associate, honorary]
+        otherAssociationMember: { type: ["boolean", "null"] }
+        otherAssociationName: { type: ["string", "null"], maxLength: 160 }
+        # Section D — Subscription poll
+        subscriptionVote:
+          type: string
+          enum: [k50, k100, k150]
+        agreeToPayAdopted: { type: boolean }
+        reliefOption:
+          type: string
+          enum: [yes, no, not-applicable]
+        paymentMethod:
+          type: ["string", "null"]
+          enum: [mobile-money, bank-transfer, cash]
+        # Section E — Declarations and signature
+        declarationConfirmResident: { type: boolean }
+        declarationReadConstitution: { type: boolean }
+        declarationMemberRegister: { type: boolean }
+        declarationVoterRoll: { type: boolean }
+        declarationContactConsent: { type: boolean }
+        declarationNoSubscription: { type: boolean }
+        declarationUndertakePayment: { type: boolean }
+        declarationUnderstandRelief: { type: boolean }
+        signatureName: { type: string, minLength: 2, maxLength: 160 }
+        # Section G — Associate and honorary members
+        principalResidenceAddress: { type: ["string", "null"], maxLength: 240 }
+        associationBasis: { type: ["string", "null"], maxLength: 240 }
+        nominatedBy: { type: ["string", "null"], maxLength: 160 }
+        # Section H — Optional planning and skills
+        occupation: { type: ["string", "null"], maxLength: 120 }
+        willingToVolunteer: { type: ["boolean", "null"] }
+        volunteerSkills: { type: ["string", "null"], maxLength: 500 }
+        accessNeeds: { type: ["string", "null"], maxLength: 500 }
+        preferredLanguage:
+          type: ["string", "null"]
+          enum: [english, nyanja, bemba, tonga, other]
+        # Additional household and emergency details
+        adultsInHousehold: { type: ["integer", "null"], minimum: 1, maximum: 30 }
+        emergencyContactName: { type: ["string", "null"], maxLength: 160 }
+        emergencyContactPhone: { type: ["string", "null"], maxLength: 40 }
+        emergencyContactRelationship: { type: ["string", "null"], maxLength: 80 }
         preferredNotification:
           type: string
           enum: [email, sms, none]
         privacyNoticeAccepted: { type: boolean }
     ResidentApplication:
       type: object
-      required: [id, reference, status, submittedAt]
+      required: [id, reference, status, submittedAt, subscriptionVote]
       properties:
         id: { type: string, format: uuid }
         reference: { type: string }
@@ -508,6 +588,9 @@ components:
           type: string
           enum: [pending-verification, clarification-requested, verified, rejected]
         submittedAt: { type: string, format: date-time }
+        subscriptionVote:
+          type: ["string", "null"]
+          enum: [k50, k100, k150]
     ResidentApplicationStatus:
       type: object
       required: [application]
@@ -526,13 +609,6 @@ components:
         - understandFoundingProvisions
         - understandWithdrawal
         - voluntary
-        - subscriptionVote
-        - onlineVotingConsent
-        - willingToVolunteer
-        - householdType
-        - emergencyContactName
-        - emergencyContactPhone
-        - emergencyContactRelationship
       properties:
         readConstitution: { type: boolean }
         consentToVersion: { type: boolean }
@@ -541,22 +617,9 @@ components:
         understandFoundingProvisions: { type: boolean }
         understandWithdrawal: { type: boolean }
         voluntary: { type: boolean }
-        subscriptionVote:
-          type: string
-          enum: [k50, k100, k150]
-        onlineVotingConsent: { type: boolean }
-        willingToVolunteer: { type: boolean }
-        volunteerSkills: { type: ["string", "null"], maxLength: 500 }
-        householdType:
-          type: string
-          enum: [homeowner, tenant]
-        adultsInHousehold: { type: ["integer", "null"], minimum: 1, maximum: 30 }
-        emergencyContactName: { type: string, minLength: 2, maxLength: 160 }
-        emergencyContactPhone: { type: string, minLength: 5, maxLength: 40 }
-        emergencyContactRelationship: { type: string, minLength: 2, maxLength: 80 }
     PetitionReceipt:
       type: object
-      required: [reference, submittedAt, constitutionVersion, petitionVersion, status, subscriptionVote]
+      required: [reference, submittedAt, constitutionVersion, petitionVersion, status]
       properties:
         reference: { type: string }
         submittedAt: { type: string, format: date-time }
@@ -564,11 +627,11 @@ components:
         petitionVersion: { type: string }
         status: { type: string, enum: [accepted] }
         subscriptionVote:
-          type: string
+          type: ["string", "null"]
           enum: [k50, k100, k150]
     ResidentPetitionReceipt:
       type: object
-      required: [reference, submittedAt, constitutionVersion, petitionVersion, status, subscriptionVote]
+      required: [reference, submittedAt, constitutionVersion, petitionVersion, status]
       properties:
         reference: { type: string }
         submittedAt: { type: string, format: date-time }
@@ -663,6 +726,32 @@ components:
           enum: [pending-verification, clarification-requested, verified, rejected]
         submittedAt: { type: string, format: date-time }
         decisionReason: { type: ["string", "null"] }
+        nrcNumber: { type: ["string", "null"] }
+        passportNumber: { type: ["string", "null"] }
+        dateOfBirth: { type: ["string", "null"] }
+        gender:
+          type: ["string", "null"]
+          enum: [male, female, other]
+        nationality: { type: ["string", "null"] }
+        residencyStatus:
+          type: ["string", "null"]
+          enum: [owner-occupier, tenant, owner-landlord, family-member]
+        residencySince: { type: ["string", "null"] }
+        ownsProperty: { type: ["boolean", "null"] }
+        membershipCategory:
+          type: ["string", "null"]
+          enum: [full, associate, honorary]
+        subscriptionVote:
+          type: ["string", "null"]
+          enum: [k50, k100, k150]
+        membershipNumber: { type: ["string", "null"] }
+        admittedAt: { type: ["string", "null"], format: date-time }
+        receivedBy: { type: ["string", "null"] }
+        verifiedAgainstNrc: { type: ["boolean", "null"] }
+        rejectionCategory:
+          type: ["string", "null"]
+          enum: [duplicate, not-resident, incomplete-declaration, other]
+        verificationNotes: { type: ["string", "null"] }
     AdminApplicationPage:
       type: object
       required: [items, page, pageSize, total]
@@ -682,6 +771,12 @@ components:
           type: string
           enum: [clarification-requested, verified, rejected]
         reason: { type: string, minLength: 3, maxLength: 1000 }
+        receivedBy: { type: ["string", "null"], maxLength: 160 }
+        verifiedAgainstNrc: { type: ["boolean", "null"] }
+        rejectionCategory:
+          type: ["string", "null"]
+          enum: [duplicate, not-resident, incomplete-declaration, other]
+        verificationNotes: { type: ["string", "null"], maxLength: 1000 }
     PublicPollResults:
       type: object
       required:
@@ -724,15 +819,6 @@ components:
         - houseNumber
         - streetOrZone
         - phone
-        - subscriptionVote
-        - onlineVotingConsent
-        - willingToVolunteer
-        - volunteerSkills
-        - householdType
-        - adultsInHousehold
-        - emergencyContactName
-        - emergencyContactPhone
-        - emergencyContactRelationship
         - status
         - onMembersRegister
         - duplicateFlag
@@ -748,19 +834,6 @@ components:
         houseNumber: { type: string }
         streetOrZone: { type: string }
         phone: { type: string }
-        subscriptionVote:
-          type: ["string", "null"]
-          enum: [k50, k100, k150]
-        onlineVotingConsent: { type: boolean }
-        willingToVolunteer: { type: boolean }
-        volunteerSkills: { type: ["string", "null"] }
-        householdType:
-          type: ["string", "null"]
-          enum: [homeowner, tenant]
-        adultsInHousehold: { type: ["integer", "null"] }
-        emergencyContactName: { type: ["string", "null"] }
-        emergencyContactPhone: { type: ["string", "null"] }
-        emergencyContactRelationship: { type: ["string", "null"] }
         status:
           type: string
           enum: [accepted, disputed, rejected, withdrawn]

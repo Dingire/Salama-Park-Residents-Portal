@@ -135,27 +135,108 @@ export const GetPublicPollResultsResponse = zod.object({
 export const submitResidentApplicationBodyFullNameMin = 2;
 export const submitResidentApplicationBodyFullNameMax = 160;
 
-export const submitResidentApplicationBodyIdentityReferenceMax = 80;
+export const submitResidentApplicationBodyNrcNumberMax = 40;
+
+export const submitResidentApplicationBodyPassportNumberMax = 40;
+
+export const submitResidentApplicationBodyDateOfBirthMin = 8;
+export const submitResidentApplicationBodyDateOfBirthMax = 10;
+
+export const submitResidentApplicationBodyNationalityMin = 2;
+export const submitResidentApplicationBodyNationalityMax = 80;
+
+export const submitResidentApplicationBodyPhoneMin = 5;
+export const submitResidentApplicationBodyPhoneMax = 40;
+
+export const submitResidentApplicationBodyPhoneAltMax = 40;
+
+export const submitResidentApplicationBodyEmailMax = 254;
 
 export const submitResidentApplicationBodyHouseNumberMax = 80;
 
 export const submitResidentApplicationBodyStreetOrZoneMax = 120;
 
-export const submitResidentApplicationBodyPhoneMin = 5;
-export const submitResidentApplicationBodyPhoneMax = 40;
+export const submitResidentApplicationBodyPlotNumberMax = 80;
 
-export const submitResidentApplicationBodyEmailMax = 254;
+export const submitResidentApplicationBodyResidencySinceMin = 4;
+export const submitResidentApplicationBodyResidencySinceMax = 32;
+
+export const submitResidentApplicationBodyPropertyPlotsMax = 200;
+
+export const submitResidentApplicationBodyOtherAssociationNameMax = 160;
+
+export const submitResidentApplicationBodySignatureNameMin = 2;
+export const submitResidentApplicationBodySignatureNameMax = 160;
+
+export const submitResidentApplicationBodyPrincipalResidenceAddressMax = 240;
+
+export const submitResidentApplicationBodyAssociationBasisMax = 240;
+
+export const submitResidentApplicationBodyNominatedByMax = 160;
+
+export const submitResidentApplicationBodyOccupationMax = 120;
+
+export const submitResidentApplicationBodyVolunteerSkillsMax = 500;
+
+export const submitResidentApplicationBodyAccessNeedsMax = 500;
+
+export const submitResidentApplicationBodyAdultsInHouseholdMax = 30;
+
+export const submitResidentApplicationBodyEmergencyContactNameMax = 160;
+
+export const submitResidentApplicationBodyEmergencyContactPhoneMax = 40;
+
+export const submitResidentApplicationBodyEmergencyContactRelationshipMax = 80;
 
 
 
 export const SubmitResidentApplicationBody = zod.object({
   "fullName": zod.string().min(submitResidentApplicationBodyFullNameMin).max(submitResidentApplicationBodyFullNameMax),
-  "identityReference": zod.string().max(submitResidentApplicationBodyIdentityReferenceMax).nullish(),
+  "nrcNumber": zod.string().max(submitResidentApplicationBodyNrcNumberMax).nullish(),
+  "passportNumber": zod.string().max(submitResidentApplicationBodyPassportNumberMax).nullish(),
+  "dateOfBirth": zod.string().min(submitResidentApplicationBodyDateOfBirthMin).max(submitResidentApplicationBodyDateOfBirthMax),
+  "gender": zod.enum(['male', 'female', 'other']),
+  "nationality": zod.string().min(submitResidentApplicationBodyNationalityMin).max(submitResidentApplicationBodyNationalityMax),
+  "phone": zod.string().min(submitResidentApplicationBodyPhoneMin).max(submitResidentApplicationBodyPhoneMax),
+  "phoneAlt": zod.string().max(submitResidentApplicationBodyPhoneAltMax).nullish(),
+  "email": zod.string().email().max(submitResidentApplicationBodyEmailMax).nullish(),
   "houseNumber": zod.string().min(1).max(submitResidentApplicationBodyHouseNumberMax),
   "streetOrZone": zod.string().min(1).max(submitResidentApplicationBodyStreetOrZoneMax),
-  "phone": zod.string().min(submitResidentApplicationBodyPhoneMin).max(submitResidentApplicationBodyPhoneMax),
-  "email": zod.string().email().max(submitResidentApplicationBodyEmailMax).nullish(),
+  "plotNumber": zod.string().max(submitResidentApplicationBodyPlotNumberMax).nullish(),
   "livesInSalamaPark": zod.boolean(),
+  "residencyStatus": zod.enum(['owner-occupier', 'tenant', 'owner-landlord', 'family-member']),
+  "residencySince": zod.string().min(submitResidentApplicationBodyResidencySinceMin).max(submitResidentApplicationBodyResidencySinceMax),
+  "ownsProperty": zod.boolean(),
+  "propertyPlots": zod.string().max(submitResidentApplicationBodyPropertyPlotsMax).nullish(),
+  "wardRegisteredVoter": zod.boolean().nullish(),
+  "membershipCategory": zod.enum(['full', 'associate', 'honorary']),
+  "otherAssociationMember": zod.boolean().nullish(),
+  "otherAssociationName": zod.string().max(submitResidentApplicationBodyOtherAssociationNameMax).nullish(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']),
+  "agreeToPayAdopted": zod.boolean(),
+  "reliefOption": zod.enum(['yes', 'no', 'not-applicable']),
+  "paymentMethod": zod.enum(['mobile-money', 'bank-transfer', 'cash']).nullish(),
+  "declarationConfirmResident": zod.boolean(),
+  "declarationReadConstitution": zod.boolean(),
+  "declarationMemberRegister": zod.boolean(),
+  "declarationVoterRoll": zod.boolean(),
+  "declarationContactConsent": zod.boolean(),
+  "declarationNoSubscription": zod.boolean(),
+  "declarationUndertakePayment": zod.boolean(),
+  "declarationUnderstandRelief": zod.boolean(),
+  "signatureName": zod.string().min(submitResidentApplicationBodySignatureNameMin).max(submitResidentApplicationBodySignatureNameMax),
+  "principalResidenceAddress": zod.string().max(submitResidentApplicationBodyPrincipalResidenceAddressMax).nullish(),
+  "associationBasis": zod.string().max(submitResidentApplicationBodyAssociationBasisMax).nullish(),
+  "nominatedBy": zod.string().max(submitResidentApplicationBodyNominatedByMax).nullish(),
+  "occupation": zod.string().max(submitResidentApplicationBodyOccupationMax).nullish(),
+  "willingToVolunteer": zod.boolean().nullish(),
+  "volunteerSkills": zod.string().max(submitResidentApplicationBodyVolunteerSkillsMax).nullish(),
+  "accessNeeds": zod.string().max(submitResidentApplicationBodyAccessNeedsMax).nullish(),
+  "preferredLanguage": zod.enum(['english', 'nyanja', 'bemba', 'tonga', 'other']).nullish(),
+  "adultsInHousehold": zod.number().int().min(1).max(submitResidentApplicationBodyAdultsInHouseholdMax).nullish(),
+  "emergencyContactName": zod.string().max(submitResidentApplicationBodyEmergencyContactNameMax).nullish(),
+  "emergencyContactPhone": zod.string().max(submitResidentApplicationBodyEmergencyContactPhoneMax).nullish(),
+  "emergencyContactRelationship": zod.string().max(submitResidentApplicationBodyEmergencyContactRelationshipMax).nullish(),
   "preferredNotification": zod.enum(['email', 'sms', 'none']),
   "privacyNoticeAccepted": zod.boolean()
 })
@@ -164,7 +245,8 @@ export const SubmitResidentApplicationResponse = zod.object({
   "id": zod.string().uuid(),
   "reference": zod.string(),
   "status": zod.enum(['pending-verification', 'clarification-requested', 'verified', 'rejected']),
-  "submittedAt": zod.coerce.date()
+  "submittedAt": zod.coerce.date(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable()
 })
 
 
@@ -176,7 +258,8 @@ export const GetMyResidentApplicationResponse = zod.object({
   "id": zod.string().uuid(),
   "reference": zod.string(),
   "status": zod.enum(['pending-verification', 'clarification-requested', 'verified', 'rejected']),
-  "submittedAt": zod.coerce.date()
+  "submittedAt": zod.coerce.date(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable()
 }),zod.null()])
 })
 
@@ -184,21 +267,6 @@ export const GetMyResidentApplicationResponse = zod.object({
 /**
  * @summary Submit an authenticated petition declaration for the exact published versions
  */
-export const submitPetitionConsentBodyVolunteerSkillsMax = 500;
-
-export const submitPetitionConsentBodyAdultsInHouseholdMax = 30;
-
-export const submitPetitionConsentBodyEmergencyContactNameMin = 2;
-export const submitPetitionConsentBodyEmergencyContactNameMax = 160;
-
-export const submitPetitionConsentBodyEmergencyContactPhoneMin = 5;
-export const submitPetitionConsentBodyEmergencyContactPhoneMax = 40;
-
-export const submitPetitionConsentBodyEmergencyContactRelationshipMin = 2;
-export const submitPetitionConsentBodyEmergencyContactRelationshipMax = 80;
-
-
-
 export const SubmitPetitionConsentBody = zod.object({
   "readConstitution": zod.boolean(),
   "consentToVersion": zod.boolean(),
@@ -206,16 +274,7 @@ export const SubmitPetitionConsentBody = zod.object({
   "understandDataUse": zod.boolean(),
   "understandFoundingProvisions": zod.boolean(),
   "understandWithdrawal": zod.boolean(),
-  "voluntary": zod.boolean(),
-  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']),
-  "onlineVotingConsent": zod.boolean(),
-  "willingToVolunteer": zod.boolean(),
-  "volunteerSkills": zod.string().max(submitPetitionConsentBodyVolunteerSkillsMax).nullish(),
-  "householdType": zod.enum(['homeowner', 'tenant']),
-  "adultsInHousehold": zod.number().int().min(1).max(submitPetitionConsentBodyAdultsInHouseholdMax).nullish(),
-  "emergencyContactName": zod.string().min(submitPetitionConsentBodyEmergencyContactNameMin).max(submitPetitionConsentBodyEmergencyContactNameMax),
-  "emergencyContactPhone": zod.string().min(submitPetitionConsentBodyEmergencyContactPhoneMin).max(submitPetitionConsentBodyEmergencyContactPhoneMax),
-  "emergencyContactRelationship": zod.string().min(submitPetitionConsentBodyEmergencyContactRelationshipMin).max(submitPetitionConsentBodyEmergencyContactRelationshipMax)
+  "voluntary": zod.boolean()
 })
 
 export const SubmitPetitionConsentResponse = zod.object({
@@ -224,7 +283,7 @@ export const SubmitPetitionConsentResponse = zod.object({
   "constitutionVersion": zod.string(),
   "petitionVersion": zod.string(),
   "status": zod.enum(['accepted']),
-  "subscriptionVote": zod.enum(['k50', 'k100', 'k150'])
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullish()
 })
 
 
@@ -237,7 +296,7 @@ export const GetMyPetitionReceiptsResponseItem = zod.object({
   "constitutionVersion": zod.string(),
   "petitionVersion": zod.string(),
   "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']),
-  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable()
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullish()
 })
 export const GetMyPetitionReceiptsResponse = zod.array(GetMyPetitionReceiptsResponseItem)
 
@@ -363,7 +422,23 @@ export const GetAdminApplicationsResponse = zod.object({
   "email": zod.string().email().nullable(),
   "status": zod.enum(['pending-verification', 'clarification-requested', 'verified', 'rejected']),
   "submittedAt": zod.coerce.date(),
-  "decisionReason": zod.string().nullable()
+  "decisionReason": zod.string().nullable(),
+  "nrcNumber": zod.string().nullish(),
+  "passportNumber": zod.string().nullish(),
+  "dateOfBirth": zod.string().nullish(),
+  "gender": zod.enum(['male', 'female', 'other']).nullish(),
+  "nationality": zod.string().nullish(),
+  "residencyStatus": zod.enum(['owner-occupier', 'tenant', 'owner-landlord', 'family-member']).nullish(),
+  "residencySince": zod.string().nullish(),
+  "ownsProperty": zod.boolean().nullish(),
+  "membershipCategory": zod.enum(['full', 'associate', 'honorary']).nullish(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullish(),
+  "membershipNumber": zod.string().nullish(),
+  "admittedAt": zod.coerce.date().nullish(),
+  "receivedBy": zod.string().nullish(),
+  "verifiedAgainstNrc": zod.boolean().nullish(),
+  "rejectionCategory": zod.enum(['duplicate', 'not-resident', 'incomplete-declaration', 'other']).nullish(),
+  "verificationNotes": zod.string().nullish()
 })),
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
@@ -381,11 +456,19 @@ export const ReviewMembershipApplicationParams = zod.object({
 export const reviewMembershipApplicationBodyReasonMin = 3;
 export const reviewMembershipApplicationBodyReasonMax = 1000;
 
+export const reviewMembershipApplicationBodyReceivedByMax = 160;
+
+export const reviewMembershipApplicationBodyVerificationNotesMax = 1000;
+
 
 
 export const ReviewMembershipApplicationBody = zod.object({
   "status": zod.enum(['clarification-requested', 'verified', 'rejected']),
-  "reason": zod.string().min(reviewMembershipApplicationBodyReasonMin).max(reviewMembershipApplicationBodyReasonMax)
+  "reason": zod.string().min(reviewMembershipApplicationBodyReasonMin).max(reviewMembershipApplicationBodyReasonMax),
+  "receivedBy": zod.string().max(reviewMembershipApplicationBodyReceivedByMax).nullish(),
+  "verifiedAgainstNrc": zod.boolean().nullish(),
+  "rejectionCategory": zod.enum(['duplicate', 'not-resident', 'incomplete-declaration', 'other']).nullish(),
+  "verificationNotes": zod.string().max(reviewMembershipApplicationBodyVerificationNotesMax).nullish()
 })
 
 export const ReviewMembershipApplicationResponse = zod.object({
@@ -398,7 +481,23 @@ export const ReviewMembershipApplicationResponse = zod.object({
   "email": zod.string().email().nullable(),
   "status": zod.enum(['pending-verification', 'clarification-requested', 'verified', 'rejected']),
   "submittedAt": zod.coerce.date(),
-  "decisionReason": zod.string().nullable()
+  "decisionReason": zod.string().nullable(),
+  "nrcNumber": zod.string().nullish(),
+  "passportNumber": zod.string().nullish(),
+  "dateOfBirth": zod.string().nullish(),
+  "gender": zod.enum(['male', 'female', 'other']).nullish(),
+  "nationality": zod.string().nullish(),
+  "residencyStatus": zod.enum(['owner-occupier', 'tenant', 'owner-landlord', 'family-member']).nullish(),
+  "residencySince": zod.string().nullish(),
+  "ownsProperty": zod.boolean().nullish(),
+  "membershipCategory": zod.enum(['full', 'associate', 'honorary']).nullish(),
+  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullish(),
+  "membershipNumber": zod.string().nullish(),
+  "admittedAt": zod.coerce.date().nullish(),
+  "receivedBy": zod.string().nullish(),
+  "verifiedAgainstNrc": zod.boolean().nullish(),
+  "rejectionCategory": zod.enum(['duplicate', 'not-resident', 'incomplete-declaration', 'other']).nullish(),
+  "verificationNotes": zod.string().nullish()
 })
 
 
@@ -430,15 +529,6 @@ export const GetAdminPetitionSubmissionsResponse = zod.object({
   "houseNumber": zod.string(),
   "streetOrZone": zod.string(),
   "phone": zod.string(),
-  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable(),
-  "onlineVotingConsent": zod.boolean(),
-  "willingToVolunteer": zod.boolean(),
-  "volunteerSkills": zod.string().nullable(),
-  "householdType": zod.enum(['homeowner', 'tenant']).nullable(),
-  "adultsInHousehold": zod.number().int().nullable(),
-  "emergencyContactName": zod.string().nullable(),
-  "emergencyContactPhone": zod.string().nullable(),
-  "emergencyContactRelationship": zod.string().nullable(),
   "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']),
   "onMembersRegister": zod.boolean().nullable(),
   "duplicateFlag": zod.boolean().nullable(),
@@ -480,15 +570,6 @@ export const VerifyPetitionSubmissionResponse = zod.object({
   "houseNumber": zod.string(),
   "streetOrZone": zod.string(),
   "phone": zod.string(),
-  "subscriptionVote": zod.enum(['k50', 'k100', 'k150']).nullable(),
-  "onlineVotingConsent": zod.boolean(),
-  "willingToVolunteer": zod.boolean(),
-  "volunteerSkills": zod.string().nullable(),
-  "householdType": zod.enum(['homeowner', 'tenant']).nullable(),
-  "adultsInHousehold": zod.number().int().nullable(),
-  "emergencyContactName": zod.string().nullable(),
-  "emergencyContactPhone": zod.string().nullable(),
-  "emergencyContactRelationship": zod.string().nullable(),
   "status": zod.enum(['accepted', 'disputed', 'rejected', 'withdrawn']),
   "onMembersRegister": zod.boolean().nullable(),
   "duplicateFlag": zod.boolean().nullable(),

@@ -5,7 +5,14 @@
  * Salama Park Residents Association governance portal API
  * OpenAPI spec version: 0.1.0
  */
+import type { ResidentApplicationInputGender } from './residentApplicationInputGender';
+import type { ResidentApplicationInputMembershipCategory } from './residentApplicationInputMembershipCategory';
+import type { ResidentApplicationInputPaymentMethod } from './residentApplicationInputPaymentMethod';
+import type { ResidentApplicationInputPreferredLanguage } from './residentApplicationInputPreferredLanguage';
 import type { ResidentApplicationInputPreferredNotification } from './residentApplicationInputPreferredNotification';
+import type { ResidentApplicationInputReliefOption } from './residentApplicationInputReliefOption';
+import type { ResidentApplicationInputResidencyStatus } from './residentApplicationInputResidencyStatus';
+import type { ResidentApplicationInputSubscriptionVote } from './residentApplicationInputSubscriptionVote';
 
 export interface ResidentApplicationInput {
   /**
@@ -14,10 +21,41 @@ export interface ResidentApplicationInput {
      */
   fullName: string;
   /**
-     * @maxLength 80
+     * @maxLength 40
      * @nullable
      */
-  identityReference?: string | null;
+  nrcNumber?: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  passportNumber?: string | null;
+  /**
+     * @minLength 8
+     * @maxLength 10
+     */
+  dateOfBirth: string;
+  gender: ResidentApplicationInputGender;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  nationality: string;
+  /**
+     * @minLength 5
+     * @maxLength 40
+     */
+  phone: string;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  phoneAlt?: string | null;
+  /**
+     * @maxLength 254
+     * @nullable
+     */
+  email?: string | null;
   /**
      * @minLength 1
      * @maxLength 80
@@ -29,16 +67,106 @@ export interface ResidentApplicationInput {
      */
   streetOrZone: string;
   /**
-     * @minLength 5
-     * @maxLength 40
-     */
-  phone: string;
-  /**
-     * @maxLength 254
+     * @maxLength 80
      * @nullable
      */
-  email?: string | null;
+  plotNumber?: string | null;
   livesInSalamaPark: boolean;
+  residencyStatus: ResidentApplicationInputResidencyStatus;
+  /**
+     * @minLength 4
+     * @maxLength 32
+     */
+  residencySince: string;
+  ownsProperty: boolean;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  propertyPlots?: string | null;
+  /** @nullable */
+  wardRegisteredVoter?: boolean | null;
+  membershipCategory: ResidentApplicationInputMembershipCategory;
+  /** @nullable */
+  otherAssociationMember?: boolean | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  otherAssociationName?: string | null;
+  subscriptionVote: ResidentApplicationInputSubscriptionVote;
+  agreeToPayAdopted: boolean;
+  reliefOption: ResidentApplicationInputReliefOption;
+  /** @nullable */
+  paymentMethod?: ResidentApplicationInputPaymentMethod;
+  declarationConfirmResident: boolean;
+  declarationReadConstitution: boolean;
+  declarationMemberRegister: boolean;
+  declarationVoterRoll: boolean;
+  declarationContactConsent: boolean;
+  declarationNoSubscription: boolean;
+  declarationUndertakePayment: boolean;
+  declarationUnderstandRelief: boolean;
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  signatureName: string;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  principalResidenceAddress?: string | null;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  associationBasis?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  nominatedBy?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  occupation?: string | null;
+  /** @nullable */
+  willingToVolunteer?: boolean | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  volunteerSkills?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  accessNeeds?: string | null;
+  /** @nullable */
+  preferredLanguage?: ResidentApplicationInputPreferredLanguage;
+  /**
+     * @minimum 1
+     * @maximum 30
+     * @nullable
+     */
+  adultsInHousehold?: number | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  emergencyContactName?: string | null;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  emergencyContactPhone?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  emergencyContactRelationship?: string | null;
   preferredNotification: ResidentApplicationInputPreferredNotification;
   privacyNoticeAccepted: boolean;
 }

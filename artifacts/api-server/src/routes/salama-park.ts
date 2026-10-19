@@ -101,25 +101,29 @@ const DECLARATION_KEYS = [
 
 type SubscriptionVoteValue = "k50" | "k100" | "k150";
 
-async function computePollMetrics(configId?: string | null) {
-  const acceptedFilter = configId
-    ? and(
-        eq(petitionSubmissionsTable.status, "accepted"),
-        eq(petitionSubmissionsTable.petitionConfigurationId, configId),
-      )
-    : eq(petitionSubmissionsTable.status, "accepted");
+/**
+ * Subscription poll metrics.
+ *
+ * The poll is now collected during registration (Section D), so the source of
+ * truth is the membership register rather than the petition table. Rejected
+ * applications are excluded; pending and verified applications both count so
+ * the public poll reflects every valid application without waiting for manual
+ * verification.
+ */
+async function computePollMetrics() {
+  const countedFilter = sql`${membershipApplicationsTable.status} <> 'rejected'`;
 
   const grouped = await db
     .select({
-      subscriptionVote: petitionSubmissionsTable.subscriptionVote,
-      householdType: petitionSubmissionsTable.householdType,
+      subscriptionVote: membershipApplicationsTable.subscriptionVote,
+      residencyStatus: membershipApplicationsTable.residencyStatus,
       value: count(),
     })
-    .from(petitionSubmissionsTable)
-    .where(acceptedFilter)
+    .from(membershipApplicationsTable)
+    .where(countedFilter)
     .groupBy(
-      petitionSubmissionsTable.subscriptionVote,
-      petitionSubmissionsTable.householdType,
+      membershipApplicationsTable.subscriptionVote,
+      membershipApplicationsTable.residencyStatus,
     );
 
   let votesK50 = 0;
@@ -131,31 +135,39 @@ async function computePollMetrics(configId?: string | null) {
     if (row.subscriptionVote === "k50") votesK50 += row.value;
     if (row.subscriptionVote === "k100") votesK100 += row.value;
     if (row.subscriptionVote === "k150") votesK150 += row.value;
-    if (row.householdType === "homeowner") homeowners += row.value;
-    if (row.householdType === "tenant") tenants += row.value;
+    if (
+      row.residencyStatus === "owner-occupier" ||
+      row.residencyStatus === "owner-landlord"
+    ) {
+      homeowners += row.value;
+    }
+    if (row.residencyStatus === "tenant") tenants += row.value;
   }
 
   const [volunteerRow] = await db
     .select({ value: count() })
-    .from(petitionSubmissionsTable)
+    .from(membershipApplicationsTable)
     .where(
-      and(acceptedFilter, eq(petitionSubmissionsTable.willingToVolunteer, true)),
+      and(
+        countedFilter,
+        eq(membershipApplicationsTable.willingToVolunteer, true),
+      ),
     );
   const [onlineVotingRow] = await db
     .select({ value: count() })
-    .from(petitionSubmissionsTable)
+    .from(membershipApplicationsTable)
     .where(
       and(
-        acceptedFilter,
-        eq(petitionSubmissionsTable.onlineVotingConsent, true),
+        countedFilter,
+        eq(membershipApplicationsTable.declarationVoterRoll, true),
       ),
     );
   const [adultsRow] = await db
     .select({
-      total: sql<number>`coalesce(sum(${petitionSubmissionsTable.adultsInHousehold}), 0)`,
+      total: sql<number>`coalesce(sum(${membershipApplicationsTable.adultsInHousehold}), 0)`,
     })
-    .from(petitionSubmissionsTable)
-    .where(acceptedFilter);
+    .from(membershipApplicationsTable)
+    .where(countedFilter);
 
   const totalVotes = votesK50 + votesK100 + votesK150;
   const percentage = (value: number) =>
@@ -182,7 +194,7 @@ async function computePollMetrics(configId?: string | null) {
     currentWinner,
     homeowners,
     tenants,
-    totalAdults: adultsRow?.total ?? 0,
+    totalAdults: Number(adultsRow?.total ?? 0),
     volunteers: volunteerRow?.value ?? 0,
     onlineVotingConsent: onlineVotingRow?.value ?? 0,
   };
@@ -363,13 +375,7 @@ router.get("/public/petition", async (_req, res): Promise<void> => {
 });
 
 router.get("/public/poll", async (_req, res): Promise<void> => {
-  const [config] = await db
-    .select({ id: petitionConfigurationsTable.id })
-    .from(petitionConfigurationsTable)
-    .orderBy(desc(petitionConfigurationsTable.createdAt))
-    .limit(1);
-
-  const metrics = await computePollMetrics(config?.id);
+  const metrics = await computePollMetrics();
   res.json(GetPublicPollResultsResponse.parse(metrics));
 });
 
@@ -383,6 +389,7 @@ router.get("/resident/application/me", async (req, res): Promise<void> => {
       reference: membershipApplicationsTable.reference,
       status: membershipApplicationsTable.status,
       submittedAt: membershipApplicationsTable.submittedAt,
+      subscriptionVote: membershipApplicationsTable.subscriptionVote,
     })
     .from(membershipApplicationsTable)
     .where(eq(membershipApplicationsTable.userId, userId))
@@ -406,14 +413,93 @@ router.post("/resident/application", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Accept the privacy notice to submit an application." });
     return;
   }
-  if (!input.livesInSalamaPark) {
-    res.status(400).json({ error: "This application is for current Salama Park residents." });
-    return;
-  }
-  if (input.identityReference?.trim()) {
+  if (!input.livesInSalamaPark && input.membershipCategory === "full") {
     res.status(400).json({
       error:
-        "Identity reference details are not being collected until the Association formally approves the requirement.",
+        "Full membership requires current residence in Salama Park. Apply as an associate member if you are a non-resident property owner.",
+    });
+    return;
+  }
+  const nrcNumber = input.nrcNumber?.trim() || "";
+  const passportNumber = input.passportNumber?.trim() || "";
+  if (!nrcNumber && !passportNumber) {
+    res.status(400).json({
+      error:
+        "Enter your NRC number, or your passport number if you do not hold an NRC.",
+    });
+    return;
+  }
+  const dateOfBirth = new Date(`${input.dateOfBirth}T00:00:00Z`);
+  if (
+    Number.isNaN(dateOfBirth.getTime()) ||
+    dateOfBirth > new Date() ||
+    dateOfBirth.getUTCFullYear() < 1900
+  ) {
+    res.status(400).json({ error: "Enter a valid date of birth." });
+    return;
+  }
+  const declarationsConfirmed = [
+    input.declarationConfirmResident,
+    input.declarationReadConstitution,
+    input.declarationMemberRegister,
+    input.declarationVoterRoll,
+    input.declarationContactConsent,
+    input.declarationNoSubscription,
+    input.declarationUndertakePayment,
+    input.declarationUnderstandRelief,
+  ].every((value) => value === true);
+  if (!declarationsConfirmed) {
+    res.status(400).json({
+      error: "Confirm each declaration before submitting your application.",
+    });
+    return;
+  }
+  if (!input.livesInSalamaPark && !input.principalResidenceAddress?.trim()) {
+    res.status(400).json({
+      error: "Provide the address of your principal residence.",
+    });
+    return;
+  }
+  if (
+    (input.membershipCategory === "associate" ||
+      input.membershipCategory === "honorary") &&
+    !input.associationBasis?.trim()
+  ) {
+    res.status(400).json({
+      error: "Describe the basis of your association with Salama Park.",
+    });
+    return;
+  }
+  if (input.membershipCategory === "honorary" && !input.nominatedBy?.trim()) {
+    res.status(400).json({
+      error:
+        "Provide the member or body that nominated you for honorary membership.",
+    });
+    return;
+  }
+  if (input.otherAssociationMember && !input.otherAssociationName?.trim()) {
+    res.status(400).json({
+      error: "Name the other residents association you belong to.",
+    });
+    return;
+  }
+  const emergencyContactName = input.emergencyContactName?.trim() || "";
+  const emergencyContactPhone = input.emergencyContactPhone?.trim() || "";
+  const emergencyContactRelationship =
+    input.emergencyContactRelationship?.trim() || "";
+  if (
+    (emergencyContactName ||
+      emergencyContactPhone ||
+      emergencyContactRelationship) &&
+    !(
+      emergencyContactName &&
+      emergencyContactPhone &&
+      emergencyContactRelationship
+    )
+  ) {
+    res.status(400).json({
+      error:
+        "Complete the emergency contact name, phone number and relationship, or leave all three blank.",
     });
     return;
   }
@@ -436,13 +522,64 @@ router.post("/resident/application", async (req, res): Promise<void> => {
         .values({
           reference,
           userId,
+          // Section A — Personal identification
           fullName: input.fullName.trim(),
+          nrcNumber: nrcNumber || null,
+          passportNumber: passportNumber || null,
+          dateOfBirth: input.dateOfBirth,
+          gender: input.gender,
+          nationality: input.nationality.trim(),
+          phone: input.phone.trim(),
+          phoneAlt: input.phoneAlt?.trim() || null,
+          email: input.email?.trim() || null,
           houseNumber: input.houseNumber.trim(),
           streetOrZone: input.streetOrZone.trim(),
-          phone: input.phone.trim(),
-          email: input.email?.trim() || null,
-          preferredNotification: input.preferredNotification,
+          plotNumber: input.plotNumber?.trim() || null,
+          // Section B — Residency
           livesInSalamaPark: input.livesInSalamaPark,
+          residencyStatus: input.residencyStatus,
+          residencySince: input.residencySince.trim(),
+          ownsProperty: input.ownsProperty,
+          propertyPlots: input.propertyPlots?.trim() || null,
+          wardRegisteredVoter: input.wardRegisteredVoter ?? null,
+          // Section C — Membership category
+          membershipCategory: input.membershipCategory,
+          otherAssociationMember: input.otherAssociationMember ?? null,
+          otherAssociationName: input.otherAssociationMember
+            ? input.otherAssociationName?.trim() || null
+            : null,
+          // Section D — Subscription poll
+          subscriptionVote: input.subscriptionVote,
+          agreeToPayAdopted: input.agreeToPayAdopted,
+          reliefOption: input.reliefOption,
+          paymentMethod: input.paymentMethod ?? null,
+          // Section E — Declarations and signature
+          declarationConfirmResident: true,
+          declarationReadConstitution: true,
+          declarationMemberRegister: true,
+          declarationVoterRoll: true,
+          declarationContactConsent: true,
+          declarationNoSubscription: true,
+          declarationUndertakePayment: true,
+          declarationUnderstandRelief: true,
+          signatureName: input.signatureName.trim(),
+          // Section G — Associate and honorary members
+          principalResidenceAddress:
+            input.principalResidenceAddress?.trim() || null,
+          associationBasis: input.associationBasis?.trim() || null,
+          nominatedBy: input.nominatedBy?.trim() || null,
+          // Section H — Optional planning and skills
+          occupation: input.occupation?.trim() || null,
+          willingToVolunteer: input.willingToVolunteer ?? false,
+          volunteerSkills: input.volunteerSkills?.trim() || null,
+          accessNeeds: input.accessNeeds?.trim() || null,
+          preferredLanguage: input.preferredLanguage ?? null,
+          // Additional household and emergency details
+          adultsInHousehold: input.adultsInHousehold ?? null,
+          emergencyContactName: emergencyContactName || null,
+          emergencyContactPhone: emergencyContactPhone || null,
+          emergencyContactRelationship: emergencyContactRelationship || null,
+          preferredNotification: input.preferredNotification,
           privacyNoticeAcceptedAt: submittedAt,
           submittedAt,
         })
@@ -451,6 +588,7 @@ router.post("/resident/application", async (req, res): Promise<void> => {
           reference: membershipApplicationsTable.reference,
           status: membershipApplicationsTable.status,
           submittedAt: membershipApplicationsTable.submittedAt,
+          subscriptionVote: membershipApplicationsTable.subscriptionVote,
         });
 
       await tx.insert(auditLogsTable).values({
@@ -458,7 +596,11 @@ router.post("/resident/application", async (req, res): Promise<void> => {
         action: "membership.application.submitted",
         recordType: "membership_application",
         recordId: application.id,
-        metadata: JSON.stringify({ status: application.status }),
+        metadata: JSON.stringify({
+          status: application.status,
+          membershipCategory: input.membershipCategory,
+          subscriptionVote: input.subscriptionVote,
+        }),
       });
       return application;
     });
@@ -472,10 +614,44 @@ router.post("/resident/application", async (req, res): Promise<void> => {
       submittedAt: created.submittedAt.toISOString(),
       fields: {
         fullName: input.fullName.trim(),
+        nrcNumber,
+        passportNumber,
+        dateOfBirth: input.dateOfBirth,
+        gender: input.gender,
+        nationality: input.nationality.trim(),
+        phone: input.phone.trim(),
+        phoneAlt: input.phoneAlt?.trim() || "",
+        email: input.email?.trim() || "",
         houseNumber: input.houseNumber.trim(),
         streetOrZone: input.streetOrZone.trim(),
-        phone: input.phone.trim(),
-        email: input.email?.trim() || "",
+        plotNumber: input.plotNumber?.trim() || "",
+        livesInSalamaPark: input.livesInSalamaPark,
+        residencyStatus: input.residencyStatus,
+        residencySince: input.residencySince.trim(),
+        ownsProperty: input.ownsProperty,
+        propertyPlots: input.propertyPlots?.trim() || "",
+        wardRegisteredVoter: input.wardRegisteredVoter ?? "",
+        membershipCategory: input.membershipCategory,
+        otherAssociationMember: input.otherAssociationMember ?? "",
+        otherAssociationName: input.otherAssociationName?.trim() || "",
+        subscriptionVote: input.subscriptionVote,
+        agreeToPayAdopted: input.agreeToPayAdopted,
+        reliefOption: input.reliefOption,
+        paymentMethod: input.paymentMethod ?? "",
+        signatureName: input.signatureName.trim(),
+        principalResidenceAddress:
+          input.principalResidenceAddress?.trim() || "",
+        associationBasis: input.associationBasis?.trim() || "",
+        nominatedBy: input.nominatedBy?.trim() || "",
+        occupation: input.occupation?.trim() || "",
+        willingToVolunteer: input.willingToVolunteer ?? false,
+        volunteerSkills: input.volunteerSkills?.trim() || "",
+        accessNeeds: input.accessNeeds?.trim() || "",
+        preferredLanguage: input.preferredLanguage ?? "",
+        adultsInHousehold: input.adultsInHousehold ?? "",
+        emergencyContactName,
+        emergencyContactPhone,
+        emergencyContactRelationship,
         status: created.status,
       },
     });
@@ -567,16 +743,6 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
               DECLARATION_KEYS.map((key) => [key, parsed.data[key]]),
             ),
           ),
-          subscriptionVote: parsed.data.subscriptionVote,
-          onlineVotingConsent: parsed.data.onlineVotingConsent,
-          willingToVolunteer: parsed.data.willingToVolunteer,
-          volunteerSkills: parsed.data.volunteerSkills?.trim() || null,
-          householdType: parsed.data.householdType,
-          adultsInHousehold: parsed.data.adultsInHousehold ?? null,
-          emergencyContactName: parsed.data.emergencyContactName.trim(),
-          emergencyContactPhone: parsed.data.emergencyContactPhone.trim(),
-          emergencyContactRelationship:
-            parsed.data.emergencyContactRelationship.trim(),
           status: "accepted",
           submittedAt,
         })
@@ -596,7 +762,6 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
         metadata: JSON.stringify({
           petitionVersion: submission.petitionVersion,
           constitutionVersion: submission.constitutionVersion,
-          subscriptionVote: submission.subscriptionVote,
         }),
       });
       return submission;
@@ -607,15 +772,9 @@ router.post("/resident/petition", async (req, res): Promise<void> => {
       reference: result.reference,
       submittedAt: result.submittedAt.toISOString(),
       fields: {
-        subscriptionVote: result.subscriptionVote,
-        onlineVotingConsent: parsed.data.onlineVotingConsent,
-        willingToVolunteer: parsed.data.willingToVolunteer,
-        volunteerSkills: parsed.data.volunteerSkills ?? "",
-        householdType: parsed.data.householdType,
-        adultsInHousehold: parsed.data.adultsInHousehold ?? "",
-        emergencyContactName: parsed.data.emergencyContactName,
-        emergencyContactPhone: parsed.data.emergencyContactPhone,
-        emergencyContactRelationship: parsed.data.emergencyContactRelationship,
+        constitutionVersion: result.constitutionVersion,
+        petitionVersion: result.petitionVersion,
+        status: result.status,
       },
     });
   } catch (error) {
@@ -806,7 +965,7 @@ router.get("/admin/dashboard", async (req, res): Promise<void> => {
       ? (acceptedPetitionSignatures / denominator) * 100
       : null;
 
-  const poll = await computePollMetrics(config?.id);
+  const poll = await computePollMetrics();
   const [unverifiedRow] = await db
     .select({ value: count() })
     .from(petitionSubmissionsTable)
@@ -876,6 +1035,9 @@ router.get("/admin/applications", async (req, res): Promise<void> => {
         ilike(membershipApplicationsTable.reference, term),
         ilike(membershipApplicationsTable.houseNumber, term),
         ilike(membershipApplicationsTable.streetOrZone, term),
+        ilike(membershipApplicationsTable.nrcNumber, term),
+        ilike(membershipApplicationsTable.phone, term),
+        ilike(membershipApplicationsTable.membershipNumber, term),
       ),
     );
   }
@@ -896,6 +1058,22 @@ router.get("/admin/applications", async (req, res): Promise<void> => {
       status: membershipApplicationsTable.status,
       submittedAt: membershipApplicationsTable.submittedAt,
       decisionReason: membershipApplicationsTable.decisionReason,
+      nrcNumber: membershipApplicationsTable.nrcNumber,
+      passportNumber: membershipApplicationsTable.passportNumber,
+      dateOfBirth: membershipApplicationsTable.dateOfBirth,
+      gender: membershipApplicationsTable.gender,
+      nationality: membershipApplicationsTable.nationality,
+      residencyStatus: membershipApplicationsTable.residencyStatus,
+      residencySince: membershipApplicationsTable.residencySince,
+      ownsProperty: membershipApplicationsTable.ownsProperty,
+      membershipCategory: membershipApplicationsTable.membershipCategory,
+      subscriptionVote: membershipApplicationsTable.subscriptionVote,
+      membershipNumber: membershipApplicationsTable.membershipNumber,
+      admittedAt: membershipApplicationsTable.admittedAt,
+      receivedBy: membershipApplicationsTable.receivedBy,
+      verifiedAgainstNrc: membershipApplicationsTable.verifiedAgainstNrc,
+      rejectionCategory: membershipApplicationsTable.rejectionCategory,
+      verificationNotes: membershipApplicationsTable.verificationNotes,
     })
     .from(membershipApplicationsTable)
     .where(where)
@@ -929,17 +1107,57 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
     return;
   }
 
+  if (body.data.status === "rejected" && !body.data.rejectionCategory) {
+    res.status(400).json({
+      error:
+        "Choose a rejection category: duplicate, not a resident, or incomplete declaration.",
+    });
+    return;
+  }
+
   const reviewedAt = new Date();
   const result = await db.transaction(async (tx: any) => {
+    const [existing] = await tx
+      .select({
+        membershipNumber: membershipApplicationsTable.membershipNumber,
+        admittedAt: membershipApplicationsTable.admittedAt,
+      })
+      .from(membershipApplicationsTable)
+      .where(eq(membershipApplicationsTable.id, params.data.id))
+      .limit(1);
+    if (!existing) return null;
+
+    let membershipNumber = existing.membershipNumber;
+    if (body.data.status === "verified" && !membershipNumber) {
+      const [verifiedCount] = await tx
+        .select({ value: count() })
+        .from(membershipApplicationsTable)
+        .where(eq(membershipApplicationsTable.status, "verified"));
+      membershipNumber = `MEM-${String((verifiedCount?.value ?? 0) + 1).padStart(4, "0")}`;
+    }
+
+    const update: Record<string, unknown> = {
+      status: body.data.status,
+      decisionReason: body.data.reason.trim(),
+      receivedBy: body.data.receivedBy?.trim() || null,
+      verifiedAgainstNrc: body.data.verifiedAgainstNrc ?? null,
+      rejectionCategory:
+        body.data.status === "rejected"
+          ? body.data.rejectionCategory ?? null
+          : null,
+      verificationNotes: body.data.verificationNotes?.trim() || null,
+      reviewedBy: userId,
+      reviewedAt,
+      updatedAt: reviewedAt,
+    };
+    if (body.data.status === "verified") {
+      update.membershipNumber = membershipNumber;
+      update.admittedAt = existing.admittedAt ?? reviewedAt;
+    }
+
     const [application] = await tx
       .update(membershipApplicationsTable)
-      .set({
-        status: body.data.status,
-        decisionReason: body.data.reason.trim(),
-        reviewedBy: userId,
-        reviewedAt,
-        updatedAt: reviewedAt,
-      })
+      .set(update)
       .where(eq(membershipApplicationsTable.id, params.data.id))
       .returning({
         id: membershipApplicationsTable.id,
@@ -952,6 +1170,22 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
         status: membershipApplicationsTable.status,
         submittedAt: membershipApplicationsTable.submittedAt,
         decisionReason: membershipApplicationsTable.decisionReason,
+        nrcNumber: membershipApplicationsTable.nrcNumber,
+        passportNumber: membershipApplicationsTable.passportNumber,
+        dateOfBirth: membershipApplicationsTable.dateOfBirth,
+        gender: membershipApplicationsTable.gender,
+        nationality: membershipApplicationsTable.nationality,
+        residencyStatus: membershipApplicationsTable.residencyStatus,
+        residencySince: membershipApplicationsTable.residencySince,
+        ownsProperty: membershipApplicationsTable.ownsProperty,
+        membershipCategory: membershipApplicationsTable.membershipCategory,
+        subscriptionVote: membershipApplicationsTable.subscriptionVote,
+        membershipNumber: membershipApplicationsTable.membershipNumber,
+        admittedAt: membershipApplicationsTable.admittedAt,
+        receivedBy: membershipApplicationsTable.receivedBy,
+        verifiedAgainstNrc: membershipApplicationsTable.verifiedAgainstNrc,
+        rejectionCategory: membershipApplicationsTable.rejectionCategory,
+        verificationNotes: membershipApplicationsTable.verificationNotes,
       });
     if (!application) return null;
 
@@ -963,6 +1197,10 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
       metadata: JSON.stringify({
         status: application.status,
         reason: body.data.reason.trim(),
+        rejectionCategory: application.rejectionCategory,
+        receivedBy: application.receivedBy,
+        verifiedAgainstNrc: application.verifiedAgainstNrc,
+        membershipNumber: application.membershipNumber,
       }),
     });
     return application;
@@ -1029,16 +1267,6 @@ router.get(
         houseNumber: membershipApplicationsTable.houseNumber,
         streetOrZone: membershipApplicationsTable.streetOrZone,
         phone: membershipApplicationsTable.phone,
-        subscriptionVote: petitionSubmissionsTable.subscriptionVote,
-        onlineVotingConsent: petitionSubmissionsTable.onlineVotingConsent,
-        willingToVolunteer: petitionSubmissionsTable.willingToVolunteer,
-        volunteerSkills: petitionSubmissionsTable.volunteerSkills,
-        householdType: petitionSubmissionsTable.householdType,
-        adultsInHousehold: petitionSubmissionsTable.adultsInHousehold,
-        emergencyContactName: petitionSubmissionsTable.emergencyContactName,
-        emergencyContactPhone: petitionSubmissionsTable.emergencyContactPhone,
-        emergencyContactRelationship:
-          petitionSubmissionsTable.emergencyContactRelationship,
         status: petitionSubmissionsTable.status,
         onMembersRegister: petitionSubmissionsTable.onMembersRegister,
         duplicateFlag: petitionSubmissionsTable.duplicateFlag,
@@ -1112,16 +1340,6 @@ router.post(
           id: petitionSubmissionsTable.id,
           reference: petitionSubmissionsTable.reference,
           userId: petitionSubmissionsTable.userId,
-          subscriptionVote: petitionSubmissionsTable.subscriptionVote,
-          onlineVotingConsent: petitionSubmissionsTable.onlineVotingConsent,
-          willingToVolunteer: petitionSubmissionsTable.willingToVolunteer,
-          volunteerSkills: petitionSubmissionsTable.volunteerSkills,
-          householdType: petitionSubmissionsTable.householdType,
-          adultsInHousehold: petitionSubmissionsTable.adultsInHousehold,
-          emergencyContactName: petitionSubmissionsTable.emergencyContactName,
-          emergencyContactPhone: petitionSubmissionsTable.emergencyContactPhone,
-          emergencyContactRelationship:
-            petitionSubmissionsTable.emergencyContactRelationship,
           status: petitionSubmissionsTable.status,
           onMembersRegister: petitionSubmissionsTable.onMembersRegister,
           duplicateFlag: petitionSubmissionsTable.duplicateFlag,

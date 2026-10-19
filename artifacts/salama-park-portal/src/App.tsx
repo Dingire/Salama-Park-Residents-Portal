@@ -4,6 +4,7 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { RegistrationForm } from '@/components/registration-form';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -240,7 +241,7 @@ function PetitionDetails({ petition, loading, error, retry }: { petition?: any; 
   return <div className="grid gap-6 lg:grid-cols-[1fr_340px]"><div className="space-y-5"><div className="rounded-2xl border border-[#e1dfd8] bg-white p-6"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#477454]"><span className="size-2 rounded-full bg-[#6a9c71]" />{petition.status}</div><h2 className="serif mt-3 text-2xl font-bold text-[#192d45]">Petition information</h2><p className="mt-3 text-sm leading-7 text-[#647083]">{petition.eligibilityText || 'Eligibility terms have not been published.'}</p>
     <div className="mt-4 rounded-xl border border-[#e1dfd8] bg-[#f7f7f4] p-4">
       <h3 className="font-semibold text-[#192d45]">Petition summary</h3>
-      <p className="mt-2 text-sm leading-6 text-[#647083]">This petition seeks adoption of the entire Draft Constitution (including Article 15 on Transitional and Founding Provisions), establishment of a new register of members from verified signatures, and online voting for adoption and first elections. No subscription is required during the founding period.</p>
+      <p className="mt-2 text-sm leading-6 text-[#647083]">This petition seeks adoption of the entire Draft Constitution (including Article 15 on Transitional and Founding Provisions), establishment of a new register of members from verified membership applications, and online voting for adoption and first elections. No subscription is required during the founding period; the monthly subscription poll is part of the membership application.</p>
       <ul className="mt-2 list-disc pl-5 text-sm leading-6 text-[#647083]">
         <li>Threshold: 2/3 of members on the register for adoption</li>
         <li>Quorum: 25% for considering the Constitution</li>
@@ -253,7 +254,7 @@ function PetitionDetails({ petition, loading, error, retry }: { petition?: any; 
 }
 function VersionField({ label, value }: { label: string; value: string | null }) { return <div><p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#87918e]">{label}</p><p className="mt-1 text-sm font-semibold text-[#293c52]">{value || 'Not published'}</p></div>; }
 function MembershipEntry() { return <div className="grid gap-5 md:grid-cols-2"><div className="rounded-2xl bg-[#172b45] p-7 text-white"><UserRound className="mb-5 text-[#a8c8a6]" size={22} /><h2 className="serif text-2xl font-bold">Begin with your resident account.</h2><p className="mt-3 text-sm leading-6 text-white/65">Sign in or create an account to securely complete the membership application. Your application will be reviewed; it is not an automatic membership confirmation.</p><div className="mt-6 flex flex-wrap gap-3"><ButtonLink href="/register">Create account <ArrowRight size={15} /></ButtonLink><ButtonLink href="/login" secondary>Sign in</ButtonLink></div></div><div className="rounded-2xl border border-[#e1dfd8] bg-white p-7"><Eyebrow>What happens next</Eyebrow><div className="space-y-5">{[['Provide details','Tell us how to identify and reach you.'],['Association review','Your residency and details are reviewed separately.'],['Status update','Check your private portal for an application status or request for clarification.']].map(([h,t],i)=><div key={h} className="flex gap-4"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#edf2ea] font-mono text-xs text-[#477454]">{i+1}</span><div><p className="text-sm font-semibold text-[#263950]">{h}</p><p className="mt-1 text-sm leading-6 text-[#6a7686]">{t}</p></div></div>)}</div></div></div>; }
-function PrivacyContent() { return <div className="max-w-3xl space-y-4"><Notice>By submitting a resident application, you must acknowledge the privacy notice. Only provide information you are comfortable sharing for verification.</Notice><article className="prose prose-slate max-w-none rounded-2xl border border-[#e1dfd8] bg-white p-6 text-sm leading-7 text-[#5f6d80]"><h2 className="serif text-xl font-bold text-[#192d45]">Information collected</h2><p>The application collects your name, Salama Park residential location and phone number. An email address is optional. Identity numbers are not requested while membership requirements are being formally confirmed.</p><h2 className="serif text-xl font-bold text-[#192d45]">How information is used</h2><p>Submitted information is used to review residency and manage association processes. Application information is not public. A submission is not proof of verified membership.</p><h2 className="serif text-xl font-bold text-[#192d45]">Your choices</h2><p>Provide only accurate information. The portal currently stores no notification preference because email and SMS delivery are not connected. Questions about information handling can be directed through the association's official channels when published.</p><p className="text-xs text-[#7c8791]">This notice describes the portal's application flow. Association contact details and any further approved policy will be added when available.</p></article></div>; }
+function PrivacyContent() { return <div className="max-w-3xl space-y-4"><Notice>By submitting a resident application, you must acknowledge the privacy notice. Only provide information you are comfortable sharing for verification.</Notice><article className="prose prose-slate max-w-none rounded-2xl border border-[#e1dfd8] bg-white p-6 text-sm leading-7 text-[#5f6d80]"><h2 className="serif text-xl font-bold text-[#192d45]">Information collected</h2><p>The application follows the association's registration record (Sections A–E, and Section G where it applies). It collects your name, NRC or passport number, date of birth, gender, nationality, contact details, Salama Park address and plot number, residency and household details, your subscription poll choice, and your declarations and digital signature. Optional planning questions in Section H and the emergency contact details are collected only if you choose to provide them.</p><h2 className="serif text-xl font-bold text-[#192d45]">How information is used</h2><p>Identity and residency details are used to verify your application and to maintain the members register and voter roll. Aggregate subscription poll results are published without your name. Section F verification notes are recorded by authorized association officials only. Application information is not public, and a submission is not proof of verified membership.</p><h2 className="serif text-xl font-bold text-[#192d45]">Your choices</h2><p>Provide only accurate information. Declarations in Section E and consent to contact are required to submit an application; the optional planning questions are never used to exclude anyone. Email notifications are recorded as a preference but delivery is not yet connected; SMS is not available yet.</p><p className="text-xs text-[#7c8791]">This notice describes the portal's application flow. Association contact details and any further approved policy will be added when available.</p></article></div>; }
 function FaqContent() { const qa = [['Does applying make me a verified member?','No. An application begins a review. Membership is confirmed only after the association verifies the application.'],['Are the constitution or petition already approved?','Only files shown in the public documents register are presented as approved. The uploaded background brief is not an approved draft constitution or petition.'],['Can I sign the petition now?','Signing depends on an active, configured petition, published document versions and eligibility settings. The petition page shows the current status.'],['When will elections take place?','No election date is stated unless the association formally configures and publishes one. Check the Elections page for confirmed information.'],['Where are results published?','Verified results will be made available on the public Results page after they are formally published.'],['How can I contact the association?','Official contact details have not been published in this portal yet. The Contact page will be updated once confirmed.']]; return <div className="max-w-3xl space-y-3">{qa.map(([q,a])=><details key={q} className="group rounded-xl border border-[#e1dfd8] bg-white px-5 py-4"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[#263950]">{q}<ChevronDown size={17} className="shrink-0 text-[#527b5c] transition-transform group-open:rotate-180" /></summary><p className="mt-3 max-w-2xl text-sm leading-6 text-[#687486]">{a}</p></details>)}</div>; }
 
 function LoginRoute() { return <Redirect to="/sign-in" />; }
@@ -269,32 +270,22 @@ function ApplicationPage() {
   const { isSignedIn } = useUser();
   const appQuery = useGetMyResidentApplication({ query: { enabled: isSignedIn, queryKey: getGetMyResidentApplicationQueryKey() } });
   const submit = useSubmitResidentApplication();
-  const [form, setForm] = useState({ fullName: '', houseNumber: '', streetOrZone: '', phone: '', email: '', livesInSalamaPark: true, preferredNotification: 'none' as 'email'|'sms'|'none', privacyNoticeAccepted: false });
   const [localError, setLocalError] = useState('');
-  const update = (key: keyof typeof form, value: string | boolean) => setForm(current => ({...current, [key]: value}));
-  const onSubmit = (event: FormEvent) => {
-    event.preventDefault(); setLocalError('');
-    if (!form.privacyNoticeAccepted) { setLocalError('Please acknowledge the privacy notice before submitting.'); return; }
-    const payload: ResidentApplicationInput = { ...form, email: form.email || null, livesInSalamaPark: Boolean(form.livesInSalamaPark) };
+  const onSubmit = (payload: ResidentApplicationInput) => {
+    setLocalError('');
     submit.mutate({data: payload}, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetMyResidentApplicationQueryKey() }); }, onError: (error) => setLocalError(serverErrorMessage(error, 'Your application could not be submitted. Please try again.')) });
   };
   const application = appQuery.data?.application;
-  return <ResidentLayout heading="Membership application" description="Submit your details for association review."><div className="grid gap-7 lg:grid-cols-[1fr_320px]"><div>
-    {appQuery.isLoading ? <Skeleton rows={2} /> : appQuery.isError ? <ErrorLine retry={() => appQuery.refetch()} /> : application ? <div className="mb-6 rounded-2xl border border-[#dce5db] bg-[#f1f5ef] p-5"><div className="flex items-center gap-2 text-sm font-semibold text-[#315f43]"><BadgeCheck size={17} />Application received · {application.status}</div><p className="mt-2 text-sm text-[#657184]">Reference {application.reference}. Your application is not an automatic membership verification.</p></div> : null}
-    {!application && <form onSubmit={onSubmit} className="rounded-2xl border border-[#e1dfd8] bg-white p-6 sm:p-8"><div className="mb-6"><h2 className="serif text-2xl font-bold text-[#1d3048]">Your resident details</h2><p className="mt-2 text-sm text-[#687486]">Information marked required must be completed.</p></div><div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Full name" required value={form.fullName} onChange={v=>update('fullName',v)} />
-      <Field label="House number" required value={form.houseNumber} onChange={v=>update('houseNumber',v)} />
-      <Field label="Street or zone" required value={form.streetOrZone} onChange={v=>update('streetOrZone',v)} />
-      <Field label="Phone number" required type="tel" value={form.phone} onChange={v=>update('phone',v)} />
-      <Field label="Email address" type="email" value={form.email} onChange={v=>update('email',v)} />
-    </div><label className="mt-5 flex items-start gap-3 text-sm leading-6 text-[#566579]"><input className="mt-1 accent-[#315f43]" type="checkbox" checked={form.livesInSalamaPark} onChange={e=>update('livesInSalamaPark',e.target.checked)} />I currently live in Salama Park.</label><label className="mt-3 flex items-start gap-3 text-sm leading-6 text-[#566579]"><input className="mt-1 accent-[#315f43]" type="checkbox" checked={form.privacyNoticeAccepted} onChange={e=>update('privacyNoticeAccepted',e.target.checked)} />I have read and accept the <Link href="/privacy" className="text-[#315f43] underline">privacy notice</Link>.</label>
-    <p className="mt-4 text-xs leading-5 text-[#758090]">Identity numbers are not requested while membership requirements are being formally confirmed. Email and SMS notifications are not connected yet; check the portal for updates.</p>
-      {localError && <div className="mt-4"><Notice kind="error">{localError}</Notice></div>}{submit.isSuccess && <div className="mt-4"><Notice kind="success">Application submitted. It is now awaiting association review.</Notice></div>}
-      <button disabled={submit.isPending} className="btn-primary mt-6 disabled:cursor-not-allowed disabled:opacity-55">{submit.isPending ? 'Submitting…' : 'Submit for verification'} {submit.isPending ? null : <ArrowRight size={15} />}</button>
-    </form>}
+  return <ResidentLayout heading="Membership application" description="Complete the association's registration form for review."><div className="grid gap-7 lg:grid-cols-[1fr_320px]"><div>
+    {appQuery.isLoading ? <Skeleton rows={2} /> : appQuery.isError ? <ErrorLine retry={() => appQuery.refetch()} /> : application ? <div className="mb-6 rounded-2xl border border-[#dce5db] bg-[#f1f5ef] p-5"><div className="flex items-center gap-2 text-sm font-semibold text-[#315f43]"><BadgeCheck size={17} />Application received · {application.status}</div><p className="mt-2 text-sm text-[#657184]">Reference {application.reference}. Your application is not an automatic membership verification.</p>{application.subscriptionVote && <p className="mt-1 text-sm text-[#657184]">Subscription choice recorded: {application.subscriptionVote.toUpperCase()} per month.</p>}</div> : null}
+    {!application && <div>
+      <div className="mb-5 rounded-2xl border border-[#e1dfd8] bg-white p-6"><h2 className="serif text-2xl font-bold text-[#1d3048]">Registration form</h2><p className="mt-2 text-sm leading-6 text-[#687486]">This form follows the association's registration record (Sections A–H). Required fields must be completed. Optional planning questions are never used to exclude anyone.</p></div>
+      <RegistrationForm isPending={submit.isPending} onSubmit={onSubmit} />
+      {localError && <div className="mt-4"><Notice kind="error">{localError}</Notice></div>}
+      {submit.isSuccess && <div className="mt-4"><Notice kind="success">Application submitted. It is now awaiting association review.</Notice></div>}
+    </div>}
   </div><aside className="space-y-4"><div className="rounded-2xl bg-[#172b45] p-6 text-white"><Eyebrow inverse>Important</Eyebrow><h3 className="serif text-xl font-bold">Application is not approval.</h3><p className="mt-3 text-sm leading-6 text-white/65">An association reviewer must verify your information. Keep your reference for future correspondence.</p></div><Link href="/privacy" className="flex items-center justify-between rounded-xl border border-[#e1dfd8] bg-white p-4 text-sm font-semibold text-[#35485c]">Read privacy notice <ArrowUpRight size={16} /></Link></aside></div></ResidentLayout>;
 }
-function Field({ label, required, type='text', value, onChange }: { label: string; required?: boolean; type?: string; value: string; onChange:(v:string)=>void }) { return <label className="text-sm font-medium text-[#35485c]">{label}{required ? <span className="text-[#9a4a43]"> *</span> : null}<input type={type} required={required} value={value} onChange={e=>onChange(e.target.value)} className="field mt-1.5" /></label>; }
 function ResidentPage({ path }: { path: string }) {
   const [heading, description] = ({
     '/resident/dashboard': ['Your resident portal', 'Your association actions and current application status.'],
@@ -315,7 +306,7 @@ function ResidentPage({ path }: { path: string }) {
     reference: string;
     constitutionVersion: string;
     petitionVersion: string;
-    subscriptionVote: string;
+    subscriptionVote?: string | null;
     submittedAt: Date | string;
   } | null>(null);
   const [error, setError] = useState('');
@@ -353,14 +344,14 @@ function ResidentPage({ path }: { path: string }) {
     };
     return <ResidentLayout heading={heading} description={description}><div className="max-w-3xl">
       {petition.isLoading ? <Skeleton rows={2} /> : petition.isError ? <ErrorLine retry={()=>petition.refetch()} /> : <PetitionDetails petition={petition.data} loading={false} error={false} retry={()=>petition.refetch()} />}
-      {receipt && <div className="mt-5"><Notice kind="success">Declaration received. Receipt {receipt.reference} · Constitution {receipt.constitutionVersion} · Petition {receipt.petitionVersion} · Subscription {receipt.subscriptionVote?.toUpperCase()}</Notice></div>}
+      {receipt && <div className="mt-5"><Notice kind="success">Declaration received. Receipt {receipt.reference} · Constitution {receipt.constitutionVersion} · Petition {receipt.petitionVersion}</Notice></div>}
       {active && !isVerified && <div className="mt-5"><Notice>Your application must be verified before you can sign this petition. <Link href="/resident/application" className="font-semibold underline">Check application status</Link>.</Notice></div>}
       {active && isVerified && !matchingReceipt && <div className="mt-5">
         <PetitionConsentForm isPending={receiptMutation.isPending} onSubmit={onConsent} />
       </div>}
       {matchingReceipt && petition.data?.signingEnabled && <div className="mt-5 rounded-2xl border border-[#e1dfd8] bg-white p-5">
         <p className="font-semibold text-[#1b2e45]">Active signature · Receipt {matchingReceipt.reference}</p>
-        <p className="mt-2 text-sm text-[#687486]">Your declaration is recorded for Constitution {matchingReceipt.constitutionVersion} and petition {matchingReceipt.petitionVersion}. Your selections are not involved in this petition receipt.</p>
+        <p className="mt-2 text-sm text-[#687486]">Your declaration is recorded for Constitution {matchingReceipt.constitutionVersion} and petition {matchingReceipt.petitionVersion}. This receipt covers the constitution-adoption declaration only; residence, subscription and household details are held in your membership application.</p>
         <button type="button" onClick={onWithdraw} disabled={withdrawMutation.isPending} className="btn-secondary mt-4 disabled:opacity-50">{withdrawMutation.isPending ? 'Withdrawing…' : 'Withdraw signature'}</button>
       </div>}
       {error && !matchingReceipt && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
@@ -372,7 +363,7 @@ function ResidentPage({ path }: { path: string }) {
   if (path === '/resident/voting') return <ResidentLayout heading={heading} description={description}><EmptyPanel title="Voting is not configured" text="No election, candidate list or voting window has been formally published. Eligibility and voting actions will appear when configured." /></ResidentLayout>;
   if (path === '/resident/receipts') return <ResidentLayout heading={heading} description={description}><div className="grid gap-4 md:grid-cols-2">
     <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Membership application</h2>{app.isLoading ? <Skeleton rows={1}/> : app.isError ? <ErrorLine retry={()=>app.refetch()}/> : app.data?.application ? <div className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Application {app.data.application.reference}</p><p className="mt-2 text-sm text-[#687486]">Status: {app.data.application.status}</p><p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(app.data.application.submittedAt).toLocaleDateString()}</p></div> : <EmptyPanel title="No application receipt" text="Once you submit an application, its status and reference appear here." />}</div>
-    <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Petition declarations</h2>{receipts.isLoading ? <Skeleton rows={1}/> : receipts.isError ? <ErrorLine retry={()=>receipts.refetch()}/> : receipts.data?.length ? <div className="space-y-3">{receipts.data.map(item=><div key={item.reference} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Receipt {item.reference}</p><p className="mt-2 text-sm text-[#687486]">Constitution {item.constitutionVersion} · Petition {item.petitionVersion}</p>{item.subscriptionVote && <p className="mt-1 text-sm font-semibold text-[#315f43]">Subscription: {item.subscriptionVote.toUpperCase()} per month</p>}<p className="mt-1 text-xs text-[#87918e]">{item.status} · Submitted {new Date(item.submittedAt).toLocaleDateString()}</p></div>)}</div> : <EmptyPanel title="No petition receipts" text="A private receipt appears here after your declaration is recorded." />}</div>
+    <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Petition declarations</h2>{receipts.isLoading ? <Skeleton rows={1}/> : receipts.isError ? <ErrorLine retry={()=>receipts.refetch()}/> : receipts.data?.length ? <div className="space-y-3">{receipts.data.map(item=><div key={item.reference} className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Receipt {item.reference}</p><p className="mt-2 text-sm text-[#687486]">Constitution {item.constitutionVersion} · Petition {item.petitionVersion}</p><p className="mt-1 text-xs text-[#87918e]">{item.status} · Submitted {new Date(item.submittedAt).toLocaleDateString()}</p></div>)}</div> : <EmptyPanel title="No petition receipts" text="A private receipt appears here after your declaration is recorded." />}</div>
   </div></ResidentLayout>;
   if (path === '/resident/notifications') return <ResidentLayout heading={heading} description={description}><EmptyPanel title="No notifications yet" text="Published association notices and private status updates will appear here when available." /></ResidentLayout>;
   return <ResidentLayout heading={heading} description={description}><ProfileView /></ResidentLayout>;
@@ -383,7 +374,7 @@ function LivePoll() {
   if (poll.isError) return <ErrorLine retry={() => poll.refetch()} />;
   const data = poll.data;
   if (!data || data.totalVotes === 0) {
-    return <EmptyPanel title="No subscription votes yet" text="The monthly subscription poll opens as soon as residents begin signing. Results update live." />;
+    return <EmptyPanel title="No subscription votes yet" text="The monthly subscription poll opens as soon as residents begin registering. Results update live." />;
   }
   const options = [
     { key: 'k50', label: 'K50.00', votes: data.votesK50, pct: data.percentageK50 },
@@ -412,6 +403,16 @@ function LivePoll() {
   </div>;
 }
 
+const PETITION_DECLARATIONS = [
+  ['readConstitution', 'I have read the published Constitution and the petition for its adoption.'],
+  ['consentToVersion', 'I consent to this declaration being recorded against the exact published versions shown.'],
+  ['truthfulResidency', 'I confirm that my residency information is true.'],
+  ['understandDataUse', 'I understand how my information is used in the members register and voter roll.'],
+  ['understandFoundingProvisions', 'I understand the founding provisions in Article 15 of the draft Constitution.'],
+  ['understandWithdrawal', 'I understand that I may withdraw my signature before the published closing deadline.'],
+  ['voluntary', 'I give this declaration voluntarily.'],
+] as const;
+
 type PetitionPayload = {
   readConstitution: boolean;
   consentToVersion: boolean;
@@ -420,34 +421,12 @@ type PetitionPayload = {
   understandFoundingProvisions: boolean;
   understandWithdrawal: boolean;
   voluntary: boolean;
-  subscriptionVote: 'k50' | 'k100' | 'k150';
-  onlineVotingConsent: boolean;
-  willingToVolunteer: boolean;
-  volunteerSkills?: string | null;
-  householdType: 'homeowner' | 'tenant';
-  adultsInHousehold?: number | null;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelationship: string;
 };
 
 function PetitionConsentForm({ isPending, onSubmit }: { isPending: boolean; onSubmit: (data: PetitionPayload) => void }) {
-  const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
-  const [householdType, setHouseholdType] = useState<'homeowner' | 'tenant'>('homeowner');
-  const [adultsInHousehold, setAdultsInHousehold] = useState('');
-  const [subscriptionVote, setSubscriptionVote] = useState<'' | 'k50' | 'k100' | 'k150'>('');
-  const [onlineVotingConsent, setOnlineVotingConsent] = useState(false);
-  const [willingToVolunteer, setWillingToVolunteer] = useState(false);
-  const [volunteerSkills, setVolunteerSkills] = useState('');
-  const [emergencyContactName, setEmergencyContactName] = useState('');
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
-  const [emergencyContactRelationship, setEmergencyContactRelationship] = useState('');
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
 
-  const adults = adultsInHousehold.trim() === '' ? null : Math.max(1, Math.min(30, Math.round(Number(adultsInHousehold) || 1)));
-  const valid = declarationConfirmed && subscriptionVote !== '' &&
-    emergencyContactName.trim().length >= 2 &&
-    emergencyContactPhone.trim().length >= 5 &&
-    emergencyContactRelationship.trim().length >= 2;
+  const valid = PETITION_DECLARATIONS.every(([key]) => confirmed[key] === true);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -460,79 +439,24 @@ function PetitionConsentForm({ isPending, onSubmit }: { isPending: boolean; onSu
       understandFoundingProvisions: true,
       understandWithdrawal: true,
       voluntary: true,
-      subscriptionVote,
-      onlineVotingConsent,
-      willingToVolunteer,
-      volunteerSkills: volunteerSkills.trim() || null,
-      householdType,
-      adultsInHousehold: adults,
-      emergencyContactName: emergencyContactName.trim(),
-      emergencyContactPhone: emergencyContactPhone.trim(),
-      emergencyContactRelationship: emergencyContactRelationship.trim(),
     });
   };
 
-  const options = [['k50', 'K50.00'], ['k100', 'K100.00'], ['k150', 'K150.00']] as const;
-
   return <form onSubmit={handleSubmit} className="mt-5 space-y-5">
     <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
-      <h3 className="font-semibold text-[#1b2e45]">1 · Declaration of consent</h3>
-      <p className="mt-2 text-sm leading-6 text-[#657184]">I have read the published constitution and petition, understand the relevant founding provisions and withdrawal terms, confirm my residency truthfully, and consent voluntarily to the exact versions shown.</p>
-      <label className="mt-4 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={declarationConfirmed} onChange={e => setDeclarationConfirmed(e.target.checked)} className="mt-1 accent-[#315f43]" />I confirm this declaration and understand how my information is used.</label>
-    </div>
-
-    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
-      <h3 className="font-semibold text-[#1b2e45]">2 · Household information</h3>
-      <fieldset className="mt-3">
-        <legend className="text-sm font-medium text-[#35485c]">Do you own or rent your home?</legend>
-        <div className="mt-2 flex gap-4">
-          <label className="flex items-center gap-2 text-sm text-[#536174]"><input type="radio" name="householdType" checked={householdType === 'homeowner'} onChange={() => setHouseholdType('homeowner')} className="accent-[#315f43]" />Homeowner</label>
-          <label className="flex items-center gap-2 text-sm text-[#536174]"><input type="radio" name="householdType" checked={householdType === 'tenant'} onChange={() => setHouseholdType('tenant')} className="accent-[#315f43]" />Tenant</label>
-        </div>
-      </fieldset>
-      <label className="mt-4 block text-sm font-medium text-[#35485c]">Number of adults in your household <span className="font-normal text-[#87918e]">(optional)</span>
-        <input type="number" min={1} max={30} value={adultsInHousehold} onChange={e => setAdultsInHousehold(e.target.value)} className="field mt-1.5" placeholder="e.g. 2" />
-      </label>
-    </div>
-
-    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
-      <h3 className="font-semibold text-[#1b2e45]">3 · Monthly subscription poll</h3>
-      <p className="mt-2 text-sm leading-6 text-[#657184]">Choose the monthly subscription amount you are willing to commit to. This helps the association plan services.</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        {options.map(([value, label]) => <label key={value} className={`flex cursor-pointer items-center justify-center rounded-xl border-2 px-4 py-5 text-center transition-colors ${subscriptionVote === value ? 'border-[#315f43] bg-[#eef6ee]' : 'border-[#e1dfd8] bg-white hover:border-[#b8c9b7]'}`}>
-          <input type="radio" name="subscriptionVote" className="sr-only" checked={subscriptionVote === value} onChange={() => setSubscriptionVote(value)} />
-          <span className="font-semibold text-[#1b2e45]">{label}<span className="block text-xs font-normal text-[#87918e]">per month</span></span>
+      <h3 className="font-semibold text-[#1b2e45]">Declaration of consent</h3>
+      <p className="mt-2 text-sm leading-6 text-[#657184]">This petition seeks adoption of the Draft Constitution. Confirm each declaration before recording your signature. Subscription choices and household details are collected during registration, not here.</p>
+      <div className="mt-4 space-y-3">
+        {PETITION_DECLARATIONS.map(([key, text]) => <label key={key} className="flex items-start gap-3 text-sm leading-6 text-[#536174]">
+          <input type="checkbox" className="mt-1 accent-[#315f43]" checked={confirmed[key] === true} onChange={event => setConfirmed(current => ({ ...current, [key]: event.target.checked }))} />
+          {text}
         </label>)}
       </div>
     </div>
-
-    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
-      <h3 className="font-semibold text-[#1b2e45]">4 · Online voting consent</h3>
-      <p className="mt-2 text-sm leading-6 text-[#657184]">The association is moving to online voting for adoption and first elections. Consent to receive a secure online ballot.</p>
-      <label className="mt-4 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={onlineVotingConsent} onChange={e => setOnlineVotingConsent(e.target.checked)} className="mt-1 accent-[#315f43]" />I consent to vote online where online voting is used.</label>
-    </div>
-
-    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
-      <h3 className="font-semibold text-[#1b2e45]">5 · Volunteer &amp; skills</h3>
-      <label className="mt-3 flex gap-3 text-sm text-[#536174]"><input type="checkbox" checked={willingToVolunteer} onChange={e => setWillingToVolunteer(e.target.checked)} className="mt-1 accent-[#315f43]" />I am willing to volunteer my time for association activities.</label>
-      <label className="mt-4 block text-sm font-medium text-[#35485c]">Skills or areas you can help with <span className="font-normal text-[#87918e]">(optional)</span>
-        <textarea value={volunteerSkills} onChange={e => setVolunteerSkills(e.target.value)} maxLength={500} rows={2} className="field mt-1.5" placeholder="e.g. IT, events, finances, gardening" />
-      </label>
-    </div>
-
-    <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
-      <h3 className="font-semibold text-[#1b2e45]">6 · Emergency contact</h3>
-      <p className="mt-2 text-sm leading-6 text-[#657184]">A contact the association can reach in case of an emergency involving your household.</p>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-medium text-[#35485c]">Contact name <span className="text-[#9a4a43]">*</span><input value={emergencyContactName} onChange={e => setEmergencyContactName(e.target.value)} required minLength={2} className="field mt-1.5" /></label>
-        <label className="block text-sm font-medium text-[#35485c]">Phone number <span className="text-[#9a4a43]">*</span><input value={emergencyContactPhone} onChange={e => setEmergencyContactPhone(e.target.value)} required minLength={5} className="field mt-1.5" /></label>
-        <label className="block text-sm font-medium text-[#35485c] sm:col-span-2">Relationship <span className="text-[#9a4a43]">*</span><input value={emergencyContactRelationship} onChange={e => setEmergencyContactRelationship(e.target.value)} required minLength={2} className="field mt-1.5" placeholder="e.g. spouse, parent, neighbour" /></label>
-      </div>
-    </div>
-
     <button type="submit" disabled={!valid || isPending} className="btn-primary disabled:opacity-50">{isPending ? 'Recording…' : 'Submit declaration'} <ArrowRight size={15} /></button>
   </form>;
 }
+
 
 function ResidentCard({href,icon,title,text}:{href:string;icon:ReactNode;title:string;text:string}) { return <Link href={href} className="group rounded-2xl border border-[#e1dfd8] bg-white p-5 transition-colors hover:border-[#b8c9b7]"><span className="grid size-10 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]">{icon}</span><h2 className="mt-4 font-semibold text-[#1c2e44]">{title}</h2><p className="mt-1 text-sm leading-6 text-[#687486]">{text}</p><span className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#477454]">Open <ArrowRight size={13}/></span></Link>; }
 function ProfileView() { const {user,isLoaded}=useUser(); if(!isLoaded) return <Skeleton rows={1}/>; return <div className="max-w-2xl rounded-2xl border border-[#e1dfd8] bg-white p-6"><div className="flex items-center gap-4"><span className="grid size-12 place-items-center rounded-full bg-[#eaf1e8] text-[#477454]"><UserRound size={22}/></span><div><p className="font-semibold text-[#1c2e44]">{user?.fullName || 'Resident account'}</p><p className="text-sm text-[#687486]">{user?.primaryEmailAddress?.emailAddress || 'Email not available'}</p></div></div><div className="mt-6 border-t border-[#e8e6df] pt-5"><Notice>Your account profile is separate from association verification. Verified membership status is determined by the association review process.</Notice></div></div>; }
@@ -603,28 +527,63 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
   const queryClient=useQueryClient();
   const [search,setSearch]=useState('');
   const [reasons,setReasons]=useState<Record<string,string>>({});
+  const [fulfilment,setFulfilment]=useState<Record<string,{receivedBy:string;verifiedAgainstNrc:boolean;rejectionCategory:string;verificationNotes:string}>>({});
   const [actionError,setActionError]=useState('');
   const params={page:1,pageSize:25,search:search.trim()||undefined};
   const applications=useGetAdminApplications(params,{query:{queryKey:getGetAdminApplicationsQueryKey(params)}});
   const review=useReviewMembershipApplication();
-  const submitReview=(id:string,status:'verified'|'clarification-requested'|'rejected')=>{
-    const reason=reasons[id]?.trim()||'';
+  const draftFor=(item:any)=>fulfilment[item.id]??{receivedBy:item.receivedBy??'',verifiedAgainstNrc:item.verifiedAgainstNrc??false,rejectionCategory:item.rejectionCategory??'',verificationNotes:item.verificationNotes??''};
+  const setDraft=(item:any,patch:Partial<{receivedBy:string;verifiedAgainstNrc:boolean;rejectionCategory:string;verificationNotes:string}>)=>setFulfilment(current=>({...current,[item.id]:{...draftFor(item),...patch}}));
+  const submitReview=(item:any,status:'verified'|'clarification-requested'|'rejected')=>{
+    const reason=reasons[item.id]?.trim()||'';
+    const draft=draftFor(item);
     setActionError('');
     if(reason.length<3){setActionError('Enter a reason of at least 3 characters before recording a decision.');return;}
-    review.mutate({id,data:{status,reason}},{onSuccess:()=>{
-      setReasons(current=>({...current,[id]:''}));
+    if(status==='rejected'&&!draft.rejectionCategory){setActionError('Choose a rejection category before rejecting an application.');return;}
+    review.mutate({id:item.id,data:{
+      status,
+      reason,
+      receivedBy:draft.receivedBy.trim()||null,
+      verifiedAgainstNrc:draft.verifiedAgainstNrc,
+      rejectionCategory:status==='rejected'?draft.rejectionCategory as 'duplicate'|'not-resident'|'incomplete-declaration'|'other':null,
+      verificationNotes:draft.verificationNotes.trim()||null,
+    }},{onSuccess:()=>{
+      setReasons(current=>({...current,[item.id]:''}));
+      setFulfilment(current=>({...current,[item.id]:draftFor({id:item.id})}));
       queryClient.invalidateQueries({queryKey:getGetAdminApplicationsQueryKey(params)});
       onChanged();
     },onError:error=>setActionError(serverErrorMessage(error,'The decision could not be recorded. Please try again.'))});
   };
   return <section>
-    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-[#1c2e44]">Resident applications</h2><p className="mt-1 text-xs text-[#687486]">Private resident details are visible only to association officials with an authorized role.</p></div><input aria-label="Search resident applications" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search by name or reference" className="field sm:max-w-xs"/></div>
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-[#1c2e44]">Resident applications</h2><p className="mt-1 text-xs text-[#687486]">Private resident details are visible only to association officials with an authorized role. Section F verification is recorded below each application.</p></div><input aria-label="Search resident applications" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search by name, NRC, reference or membership number" className="field sm:max-w-xs"/></div>
     {actionError&&<div className="mb-4"><Notice kind="error">{actionError}</Notice></div>}
     {applications.isLoading?<Skeleton rows={3}/>:applications.isError?<ErrorLine retry={()=>applications.refetch()}/>:!applications.data?.items.length?<EmptyPanel title="No applications found" text="No matching applications have been submitted."/>:
-      <div className="space-y-3">{applications.data.items.map(item=><article key={item.id} className="rounded-xl border border-[#e1dfd8] bg-white p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-semibold text-[#1c2e44]">{item.fullName}</p><p className="mt-1 text-xs text-[#687486]">Reference {item.reference} · {item.status.replaceAll('-',' ')}</p><p className="mt-2 text-sm text-[#536174]">{item.houseNumber}, {item.streetOrZone}</p><p className="text-sm text-[#536174]">{item.phone}{item.email?` · ${item.email}`:''}</p><p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(item.submittedAt).toLocaleString()}</p>{item.decisionReason&&<p className="mt-2 text-sm text-[#687486]">Decision note: {item.decisionReason}</p>}</div></div>
-        {canReview&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><label className="block text-xs font-semibold text-[#536174]">Decision reason<input value={reasons[item.id]??''} onChange={event=>setReasons(current=>({...current,[item.id]:event.target.value}))} className="field mt-1.5" maxLength={1000} /></label><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={review.isPending} onClick={()=>submitReview(item.id,'verified')} className="btn-primary disabled:opacity-50">Verify</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item.id,'clarification-requested')} className="btn-secondary disabled:opacity-50">Request clarification</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item.id,'rejected')} className="btn-secondary disabled:opacity-50">Reject</button></div></div>}
-      </article>)}</div>}
+      <div className="space-y-3">{applications.data.items.map(item=>{
+        const draft=draftFor(item);
+        return <article key={item.id} className="rounded-xl border border-[#e1dfd8] bg-white p-5">
+          <div>
+            <p className="font-semibold text-[#1c2e44]">{item.fullName}</p>
+            <p className="mt-1 text-xs text-[#687486]">Reference {item.reference} · {item.status.replaceAll('-',' ')}{item.membershipCategory?` · ${item.membershipCategory.replaceAll('-',' ')} membership`:''}</p>
+            <p className="mt-2 text-sm text-[#536174]">{item.houseNumber}, {item.streetOrZone} · {item.phone}{item.email?` · ${item.email}`:''}</p>
+            <p className="mt-1 text-xs text-[#87918e]">NRC {item.nrcNumber||'—'} · Passport {item.passportNumber||'—'} · Date of birth {item.dateOfBirth||'—'} · {item.gender||'—'} · {item.nationality||'—'}</p>
+            <p className="mt-1 text-xs text-[#87918e]">Residency: {item.residencyStatus?item.residencyStatus.replaceAll('-',' '):'—'} since {item.residencySince||'—'} · Owns property: {item.ownsProperty?'yes':'no'} · Subscription: {item.subscriptionVote?item.subscriptionVote.toUpperCase():'—'}</p>
+            {item.membershipNumber&&<p className="mt-1 text-xs text-[#315f43]">Membership number {item.membershipNumber}{item.admittedAt?` · Admitted ${new Date(item.admittedAt).toLocaleDateString()}`:''}</p>}
+            <p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(item.submittedAt).toLocaleString()}{item.receivedBy?` · Received by ${item.receivedBy}`:''}{typeof item.verifiedAgainstNrc==='boolean'?` · NRC verified: ${item.verifiedAgainstNrc?'yes':'no'}`:''}{item.rejectionCategory?` · Rejection: ${item.rejectionCategory.replaceAll('-',' ')}`:''}</p>
+            {item.decisionReason&&<p className="mt-2 text-sm text-[#687486]">Decision note: {item.decisionReason}</p>}
+            {item.verificationNotes&&<p className="mt-1 text-sm text-[#687486]">Verification notes: {item.verificationNotes}</p>}
+          </div>
+          {canReview&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#647083]">Section F · Verification record</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-semibold text-[#536174]">Received by<input value={draft.receivedBy} onChange={event=>setDraft(item,{receivedBy:event.target.value})} className="field mt-1.5" maxLength={160} placeholder="Street representative / official" /></label>
+              <label className="block text-xs font-semibold text-[#536174]">Rejection category<select value={draft.rejectionCategory} onChange={event=>setDraft(item,{rejectionCategory:event.target.value})} className="field mt-1.5"><option value="">Not applicable</option><option value="duplicate">Duplicate application</option><option value="not-resident">Not a resident</option><option value="incomplete-declaration">Incomplete declaration</option><option value="other">Other</option></select></label>
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-[#536174]"><input type="checkbox" checked={draft.verifiedAgainstNrc} onChange={event=>setDraft(item,{verifiedAgainstNrc:event.target.checked})} className="accent-[#315f43]" />Details verified against NRC / passport</label>
+            <label className="mt-3 block text-xs font-semibold text-[#536174]">Decision reason<input value={reasons[item.id]??''} onChange={event=>setReasons(current=>({...current,[item.id]:event.target.value}))} className="field mt-1.5" maxLength={1000} /></label>
+            <label className="mt-3 block text-xs font-semibold text-[#536174]">Verification notes (optional)<input value={draft.verificationNotes} onChange={event=>setDraft(item,{verificationNotes:event.target.value})} className="field mt-1.5" maxLength={1000} /></label>
+            <div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'verified')} className="btn-primary disabled:opacity-50">Verify</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'clarification-requested')} className="btn-secondary disabled:opacity-50">Request clarification</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'rejected')} className="btn-secondary disabled:opacity-50">Reject</button></div>
+          </div>}
+        </article>;
+      })}</div>}
   </section>;
 }
 
@@ -652,7 +611,6 @@ function AdminPetitionPanel({ canReview, onChanged }: { canReview: boolean; onCh
       onError: error => setActionError(serverErrorMessage(error, 'The verification could not be recorded. Please try again.')),
     });
   };
-  const voteLabel = (v: string | null) => v ? v.toUpperCase() : '—';
   return <section>
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div><h2 className="font-semibold text-[#1c2e44]">Petition signature verification</h2><p className="mt-1 text-xs text-[#687486]">Returning Officers check each signature against the members register before it counts toward the threshold.</p></div>
@@ -675,8 +633,7 @@ function AdminPetitionPanel({ canReview, onChanged }: { canReview: boolean; onCh
             <p className="font-semibold text-[#1c2e44]">{item.fullName}</p>
             <p className="mt-1 text-xs text-[#687486]">Reference {item.reference} · {item.status.replaceAll('-', ' ')}</p>
             <p className="mt-2 text-sm text-[#536174]">{item.houseNumber}, {item.streetOrZone} · {item.phone}</p>
-            <p className="mt-2 text-xs text-[#87918e]">Subscription <strong className="text-[#315f43]">{voteLabel(item.subscriptionVote)}</strong> · {item.householdType ?? '—'}{item.adultsInHousehold ? ` · ${item.adultsInHousehold} adult(s)` : ''} · {item.onlineVotingConsent ? 'Online voting: yes' : 'Online voting: no'} · {item.willingToVolunteer ? 'Volunteer' : 'No volunteer'}{item.volunteerSkills ? ` (${item.volunteerSkills})` : ''}</p>
-            <p className="mt-1 text-xs text-[#87918e]">Emergency: {item.emergencyContactName} · {item.emergencyContactPhone} ({item.emergencyContactRelationship})</p>
+            <p className="mt-1 text-xs text-[#87918e]">Subscription choices, household details and volunteer skills are recorded in the resident application at <Link href="/admin/members" className="text-[#315f43] underline">Members &amp; applications</Link>.</p>
             <p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(item.submittedAt).toLocaleString()}{item.verifiedAt ? ` · Verified ${new Date(item.verifiedAt).toLocaleString()}` : ''}</p>
             {item.verificationNotes && <p className="mt-2 text-sm text-[#687486]">Last note: {item.verificationNotes}</p>}
           </div>

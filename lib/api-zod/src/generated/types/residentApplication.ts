@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ResidentApplicationStatusProperty } from './residentApplicationStatusProperty';
+import type { ResidentApplicationSubscriptionVote } from './residentApplicationSubscriptionVote';
 
 export interface ResidentApplication {
   id: string;
   reference: string;
   status: ResidentApplicationStatusProperty;
   submittedAt: Date;
+  /** @nullable */
+  subscriptionVote: ResidentApplicationSubscriptionVote;
 }
