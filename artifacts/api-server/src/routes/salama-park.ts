@@ -1110,6 +1110,7 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
   const result = await db.transaction(async (tx: any) => {
     const [existing] = await tx
       .select({
+        status: membershipApplicationsTable.status,
         membershipNumber: membershipApplicationsTable.membershipNumber,
         admittedAt: membershipApplicationsTable.admittedAt,
       })
@@ -1117,6 +1118,14 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
       .where(eq(membershipApplicationsTable.id, params.data.id))
       .limit(1);
     if (!existing) return null;
+
+    // Verified and rejected are final. A decision is only recorded while an
+    // application is still awaiting one, so an already-decided record cannot be
+    // re-verified or re-rejected (whether by the UI or a direct API call).
+    const finalStatuses = ["verified", "rejected"];
+    if (finalStatuses.includes(existing.status)) {
+      return { alreadyDecided: true as const, status: existing.status };
+    }
 
     let membershipNumber = existing.membershipNumber;
     if (body.data.status === "verified" && !membershipNumber) {
@@ -1198,6 +1207,12 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
   });
   if (!result) {
     res.status(404).json({ error: "Membership application not found." });
+    return;
+  }
+  if (typeof result === "object" && "alreadyDecided" in result) {
+    res.status(409).json({
+      error: `This application has already been ${result.status}. A decision cannot be changed once recorded.`,
+    });
     return;
   }
   res.json(ReviewMembershipApplicationResponse.parse(result));

@@ -832,6 +832,9 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
     {applications.isLoading?<Skeleton rows={3}/>:applications.isError?<ErrorLine retry={()=>applications.refetch()}/>:!applications.data?.items.length?<EmptyPanel title="No applications found" text="No matching applications have been submitted."/>:
       <div className="space-y-3">{applications.data.items.map(item=>{
         const draft=draftFor(item);
+        // Verified and rejected are final, so the decision controls are only
+        // offered while the application is still awaiting one.
+        const isDecided=item.status==='verified'||item.status==='rejected';
         return <article key={item.id} className="rounded-xl border border-[#e1dfd8] bg-white p-5">
           <div>
             <p className="font-semibold text-[#1c2e44]">{item.fullName}</p>
@@ -844,7 +847,7 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
             {item.decisionReason&&<p className="mt-2 text-sm text-[#687486]">Decision note: {item.decisionReason}</p>}
             {item.verificationNotes&&<p className="mt-1 text-sm text-[#687486]">Verification notes: {item.verificationNotes}</p>}
           </div>
-          {canReview&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#647083]">Section F · Verification record</p>
+          {canReview&&!isDecided&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#647083]">Section F · Verification record</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-semibold text-[#536174]">Received by<input value={draft.receivedBy} onChange={event=>setDraft(item,{receivedBy:event.target.value})} className="field mt-1.5" maxLength={160} placeholder="Street representative / official" /></label>
               <label className="block text-xs font-semibold text-[#536174]">Rejection category<select value={draft.rejectionCategory} onChange={event=>setDraft(item,{rejectionCategory:event.target.value})} className="field mt-1.5"><option value="">Not applicable</option><option value="duplicate">Duplicate application</option><option value="not-resident">Not a resident</option><option value="incomplete-declaration">Incomplete declaration</option><option value="other">Other</option></select></label>
@@ -853,6 +856,10 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
             <label className="mt-3 block text-xs font-semibold text-[#536174]">Decision reason<input value={reasons[item.id]??''} onChange={event=>setReasons(current=>({...current,[item.id]:event.target.value}))} className="field mt-1.5" maxLength={1000} /></label>
             <label className="mt-3 block text-xs font-semibold text-[#536174]">Verification notes (optional)<input value={draft.verificationNotes} onChange={event=>setDraft(item,{verificationNotes:event.target.value})} className="field mt-1.5" maxLength={1000} /></label>
             <div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'verified')} className="btn-primary disabled:opacity-50">Verify</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'clarification-requested')} className="btn-secondary disabled:opacity-50">Request clarification</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'rejected')} className="btn-secondary disabled:opacity-50">Reject</button></div>
+          </div>}
+          {canReview&&isDecided&&<div className="mt-4 border-t border-[#e8e6df] pt-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#647083]">Decision recorded</p>
+            <p className="mt-2 text-sm text-[#536174]">This application was <strong>{item.status}</strong>{item.membershipNumber?` and admitted as ${item.membershipNumber}`:''}. Verified and rejected applications are final, so no further decision can be recorded here.</p>
           </div>}
         </article>;
       })}</div>}
