@@ -24,6 +24,11 @@ import type {
   AdminApplication,
   AdminApplicationPage,
   AdminDashboard,
+  AdminFinanceCharge,
+  AdminFinanceChargePage,
+  AdminFinanceExpense,
+  AdminFinanceExpensePage,
+  AdminFinanceOverview,
   AdminPetitionConfigurationState,
   AdminPetitionSubmission,
   AdminPetitionSubmissionPage,
@@ -31,9 +36,19 @@ import type {
   AdminRoleAssignment,
   AdminRoleRegister,
   ApplicationReviewInput,
+  FinanceChargeGeneration,
+  FinanceExpenseDeletion,
+  FinanceExpenseInput,
+  FinancePaymentInput,
+  FinancePeriod,
+  FinancePeriodInput,
+  FinanceWaiverInput,
   GetAdminApplicationsParams,
+  GetAdminFinanceChargesParams,
+  GetAdminFinanceExpensesParams,
   GetAdminPetitionSubmissionsParams,
   HealthStatus,
+  MySubscription,
   PetitionConfigurationInput,
   PetitionConsentInput,
   PetitionReceipt,
@@ -2177,4 +2192,905 @@ export const useRevokeAdminRole = <TError = ErrorType<void>,
       > => {
       return useMutation(getRevokeAdminRoleMutationOptions(options));
     }
+
+export const getGetAdminFinanceOverviewUrl = () => {
+
+
+
+
+  return `/api/admin/finance/overview`
+}
+
+/**
+ * @summary Subscription and expenditure totals for the active period
+ */
+export const getAdminFinanceOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminFinanceOverview> => {
+
+  return customFetch<AdminFinanceOverview>(getGetAdminFinanceOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFinanceOverviewQueryKey = () => {
+    return [
+    `/api/admin/finance/overview`
+    ] as const;
+    }
+
+
+export const getGetAdminFinanceOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFinanceOverview>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFinanceOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFinanceOverview>>> = ({ signal }) => getAdminFinanceOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFinanceOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFinanceOverview>>>
+export type GetAdminFinanceOverviewQueryError = ErrorType<void>
+
+
+/**
+ * @summary Subscription and expenditure totals for the active period
+ */
+
+export function useGetAdminFinanceOverview<TData = Awaited<ReturnType<typeof getAdminFinanceOverview>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFinanceOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminFinancePeriodsUrl = () => {
+
+
+
+
+  return `/api/admin/finance/periods`
+}
+
+/**
+ * @summary List subscription periods and their tier amounts
+ */
+export const getAdminFinancePeriods = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinancePeriod[]> => {
+
+  return customFetch<FinancePeriod[]>(getGetAdminFinancePeriodsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFinancePeriodsQueryKey = () => {
+    return [
+    `/api/admin/finance/periods`
+    ] as const;
+    }
+
+
+export const getGetAdminFinancePeriodsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFinancePeriods>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinancePeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFinancePeriodsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFinancePeriods>>> = ({ signal }) => getAdminFinancePeriods({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFinancePeriods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFinancePeriodsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFinancePeriods>>>
+export type GetAdminFinancePeriodsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List subscription periods and their tier amounts
+ */
+
+export function useGetAdminFinancePeriods<TData = Awaited<ReturnType<typeof getAdminFinancePeriods>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinancePeriods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFinancePeriodsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminFinancePeriodUrl = () => {
+
+
+
+
+  return `/api/admin/finance/periods`
+}
+
+/**
+ * @summary Create a subscription period with its tier amounts
+ */
+export const createAdminFinancePeriod = async (financePeriodInput: FinancePeriodInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancePeriod> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FinancePeriod>(getCreateAdminFinancePeriodUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financePeriodInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminFinancePeriodMutationKey = () => ['createAdminFinancePeriod'] as const;
+
+export const getCreateAdminFinancePeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminFinancePeriod>>, TError,CreateAdminFinancePeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminFinancePeriod>>, TError,CreateAdminFinancePeriodMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminFinancePeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminFinancePeriod>>, CreateAdminFinancePeriodMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminFinancePeriod(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminFinancePeriodMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminFinancePeriod>>>
+    export type CreateAdminFinancePeriodMutationBody = BodyType<FinancePeriodInput>
+    export type CreateAdminFinancePeriodMutationError = ErrorType<void>
+    export type CreateAdminFinancePeriodMutationVariables = {data: BodyType<FinancePeriodInput>}
+
+    /**
+ * @summary Create a subscription period with its tier amounts
+ */
+export const useCreateAdminFinancePeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminFinancePeriod>>, TError,CreateAdminFinancePeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminFinancePeriod>>,
+        TError,
+        CreateAdminFinancePeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminFinancePeriodMutationOptions(options));
+    }
+
+export const getGenerateAdminFinanceChargesUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/finance/periods/${id}/generate`
+}
+
+/**
+ * @summary Raise subscription charges for every verified member
+ */
+export const generateAdminFinanceCharges = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<FinanceChargeGeneration> => {
+
+  return customFetch<FinanceChargeGeneration>(getGenerateAdminFinanceChargesUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateAdminFinanceChargesMutationKey = () => ['generateAdminFinanceCharges'] as const;
+
+export const getGenerateAdminFinanceChargesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateAdminFinanceCharges>>, TError,GenerateAdminFinanceChargesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateAdminFinanceCharges>>, TError,GenerateAdminFinanceChargesMutationVariables, TContext> => {
+
+const mutationKey = getGenerateAdminFinanceChargesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateAdminFinanceCharges>>, GenerateAdminFinanceChargesMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateAdminFinanceCharges(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateAdminFinanceChargesMutationResult = NonNullable<Awaited<ReturnType<typeof generateAdminFinanceCharges>>>
+
+    export type GenerateAdminFinanceChargesMutationError = ErrorType<void>
+    export type GenerateAdminFinanceChargesMutationVariables = {id: string}
+
+    /**
+ * @summary Raise subscription charges for every verified member
+ */
+export const useGenerateAdminFinanceCharges = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateAdminFinanceCharges>>, TError,GenerateAdminFinanceChargesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateAdminFinanceCharges>>,
+        TError,
+        GenerateAdminFinanceChargesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateAdminFinanceChargesMutationOptions(options));
+    }
+
+export const getGetAdminFinanceChargesUrl = (params?: GetAdminFinanceChargesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/finance/charges?${stringifiedParams}` : `/api/admin/finance/charges`
+}
+
+/**
+ * @summary Page through member subscription charges
+ */
+export const getAdminFinanceCharges = async (params?: GetAdminFinanceChargesParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminFinanceChargePage> => {
+
+  return customFetch<AdminFinanceChargePage>(getGetAdminFinanceChargesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFinanceChargesQueryKey = (params?: GetAdminFinanceChargesParams,) => {
+    return [
+    `/api/admin/finance/charges`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminFinanceChargesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFinanceCharges>>, TError = ErrorType<void>>(params?: GetAdminFinanceChargesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceCharges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFinanceChargesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFinanceCharges>>> = ({ signal }) => getAdminFinanceCharges(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceCharges>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFinanceChargesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFinanceCharges>>>
+export type GetAdminFinanceChargesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Page through member subscription charges
+ */
+
+export function useGetAdminFinanceCharges<TData = Awaited<ReturnType<typeof getAdminFinanceCharges>>, TError = ErrorType<void>>(
+ params?: GetAdminFinanceChargesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceCharges>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFinanceChargesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordAdminFinancePaymentUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/finance/charges/${id}/payments`
+}
+
+/**
+ * @summary Record a payment received against a subscription charge
+ */
+export const recordAdminFinancePayment = async (id: string,
+    financePaymentInput: FinancePaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminFinanceCharge> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminFinanceCharge>(getRecordAdminFinancePaymentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financePaymentInput)
+  }
+);}
+
+
+
+
+
+export const getRecordAdminFinancePaymentMutationKey = () => ['recordAdminFinancePayment'] as const;
+
+export const getRecordAdminFinancePaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAdminFinancePayment>>, TError,RecordAdminFinancePaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordAdminFinancePayment>>, TError,RecordAdminFinancePaymentMutationVariables, TContext> => {
+
+const mutationKey = getRecordAdminFinancePaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordAdminFinancePayment>>, RecordAdminFinancePaymentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  recordAdminFinancePayment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordAdminFinancePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof recordAdminFinancePayment>>>
+    export type RecordAdminFinancePaymentMutationBody = BodyType<FinancePaymentInput>
+    export type RecordAdminFinancePaymentMutationError = ErrorType<void>
+    export type RecordAdminFinancePaymentMutationVariables = {id: string;data: BodyType<FinancePaymentInput>}
+
+    /**
+ * @summary Record a payment received against a subscription charge
+ */
+export const useRecordAdminFinancePayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAdminFinancePayment>>, TError,RecordAdminFinancePaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordAdminFinancePayment>>,
+        TError,
+        RecordAdminFinancePaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordAdminFinancePaymentMutationOptions(options));
+    }
+
+export const getWaiveAdminFinanceChargeUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/finance/charges/${id}/waive`
+}
+
+/**
+ * @summary Waive all or part of a subscription charge
+ */
+export const waiveAdminFinanceCharge = async (id: string,
+    financeWaiverInput: FinanceWaiverInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminFinanceCharge> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminFinanceCharge>(getWaiveAdminFinanceChargeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financeWaiverInput)
+  }
+);}
+
+
+
+
+
+export const getWaiveAdminFinanceChargeMutationKey = () => ['waiveAdminFinanceCharge'] as const;
+
+export const getWaiveAdminFinanceChargeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof waiveAdminFinanceCharge>>, TError,WaiveAdminFinanceChargeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof waiveAdminFinanceCharge>>, TError,WaiveAdminFinanceChargeMutationVariables, TContext> => {
+
+const mutationKey = getWaiveAdminFinanceChargeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof waiveAdminFinanceCharge>>, WaiveAdminFinanceChargeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  waiveAdminFinanceCharge(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WaiveAdminFinanceChargeMutationResult = NonNullable<Awaited<ReturnType<typeof waiveAdminFinanceCharge>>>
+    export type WaiveAdminFinanceChargeMutationBody = BodyType<FinanceWaiverInput>
+    export type WaiveAdminFinanceChargeMutationError = ErrorType<void>
+    export type WaiveAdminFinanceChargeMutationVariables = {id: string;data: BodyType<FinanceWaiverInput>}
+
+    /**
+ * @summary Waive all or part of a subscription charge
+ */
+export const useWaiveAdminFinanceCharge = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof waiveAdminFinanceCharge>>, TError,WaiveAdminFinanceChargeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof waiveAdminFinanceCharge>>,
+        TError,
+        WaiveAdminFinanceChargeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getWaiveAdminFinanceChargeMutationOptions(options));
+    }
+
+export const getGetAdminFinanceExpensesUrl = (params?: GetAdminFinanceExpensesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/finance/expenses?${stringifiedParams}` : `/api/admin/finance/expenses`
+}
+
+/**
+ * @summary Page through recorded association expenditure
+ */
+export const getAdminFinanceExpenses = async (params?: GetAdminFinanceExpensesParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminFinanceExpensePage> => {
+
+  return customFetch<AdminFinanceExpensePage>(getGetAdminFinanceExpensesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFinanceExpensesQueryKey = (params?: GetAdminFinanceExpensesParams,) => {
+    return [
+    `/api/admin/finance/expenses`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminFinanceExpensesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFinanceExpenses>>, TError = ErrorType<void>>(params?: GetAdminFinanceExpensesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFinanceExpensesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFinanceExpenses>>> = ({ signal }) => getAdminFinanceExpenses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceExpenses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFinanceExpensesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFinanceExpenses>>>
+export type GetAdminFinanceExpensesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Page through recorded association expenditure
+ */
+
+export function useGetAdminFinanceExpenses<TData = Awaited<ReturnType<typeof getAdminFinanceExpenses>>, TError = ErrorType<void>>(
+ params?: GetAdminFinanceExpensesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFinanceExpensesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminFinanceExpenseUrl = () => {
+
+
+
+
+  return `/api/admin/finance/expenses`
+}
+
+/**
+ * @summary Record money paid out by the association
+ */
+export const createAdminFinanceExpense = async (financeExpenseInput: FinanceExpenseInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminFinanceExpense> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminFinanceExpense>(getCreateAdminFinanceExpenseUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(financeExpenseInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminFinanceExpenseMutationKey = () => ['createAdminFinanceExpense'] as const;
+
+export const getCreateAdminFinanceExpenseMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminFinanceExpense>>, TError,CreateAdminFinanceExpenseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminFinanceExpense>>, TError,CreateAdminFinanceExpenseMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminFinanceExpenseMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminFinanceExpense>>, CreateAdminFinanceExpenseMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminFinanceExpense(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminFinanceExpenseMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminFinanceExpense>>>
+    export type CreateAdminFinanceExpenseMutationBody = BodyType<FinanceExpenseInput>
+    export type CreateAdminFinanceExpenseMutationError = ErrorType<void>
+    export type CreateAdminFinanceExpenseMutationVariables = {data: BodyType<FinanceExpenseInput>}
+
+    /**
+ * @summary Record money paid out by the association
+ */
+export const useCreateAdminFinanceExpense = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminFinanceExpense>>, TError,CreateAdminFinanceExpenseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminFinanceExpense>>,
+        TError,
+        CreateAdminFinanceExpenseMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminFinanceExpenseMutationOptions(options));
+    }
+
+export const getDeleteAdminFinanceExpenseUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/finance/expenses/${id}`
+}
+
+/**
+ * @summary Remove an expense recorded in error
+ */
+export const deleteAdminFinanceExpense = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<FinanceExpenseDeletion> => {
+
+  return customFetch<FinanceExpenseDeletion>(getDeleteAdminFinanceExpenseUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminFinanceExpenseMutationKey = () => ['deleteAdminFinanceExpense'] as const;
+
+export const getDeleteAdminFinanceExpenseMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminFinanceExpense>>, TError,DeleteAdminFinanceExpenseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminFinanceExpense>>, TError,DeleteAdminFinanceExpenseMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminFinanceExpenseMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminFinanceExpense>>, DeleteAdminFinanceExpenseMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminFinanceExpense(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminFinanceExpenseMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminFinanceExpense>>>
+
+    export type DeleteAdminFinanceExpenseMutationError = ErrorType<void>
+    export type DeleteAdminFinanceExpenseMutationVariables = {id: string}
+
+    /**
+ * @summary Remove an expense recorded in error
+ */
+export const useDeleteAdminFinanceExpense = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminFinanceExpense>>, TError,DeleteAdminFinanceExpenseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminFinanceExpense>>,
+        TError,
+        DeleteAdminFinanceExpenseMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminFinanceExpenseMutationOptions(options));
+    }
+
+export const getGetMySubscriptionUrl = () => {
+
+
+
+
+  return `/api/resident/subscription`
+}
+
+/**
+ * @summary The signed-in member's own subscription charge and payments
+ */
+export const getMySubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<MySubscription> => {
+
+  return customFetch<MySubscription>(getGetMySubscriptionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMySubscriptionQueryKey = () => {
+    return [
+    `/api/resident/subscription`
+    ] as const;
+    }
+
+
+export const getGetMySubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getMySubscription>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMySubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMySubscriptionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMySubscription>>> = ({ signal }) => getMySubscription({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMySubscription>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMySubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getMySubscription>>>
+export type GetMySubscriptionQueryError = ErrorType<void>
+
+
+/**
+ * @summary The signed-in member's own subscription charge and payments
+ */
+
+export function useGetMySubscription<TData = Awaited<ReturnType<typeof getMySubscription>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMySubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMySubscriptionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

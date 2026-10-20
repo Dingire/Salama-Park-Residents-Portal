@@ -32,6 +32,17 @@ import {
   useGetAdminRoles, getGetAdminRolesQueryKey,
   useGrantAdminRole,
   useRevokeAdminRole,
+  useGetAdminFinanceOverview, getGetAdminFinanceOverviewQueryKey,
+  useGetAdminFinancePeriods, getGetAdminFinancePeriodsQueryKey,
+  useCreateAdminFinancePeriod,
+  useGenerateAdminFinanceCharges,
+  useGetAdminFinanceCharges, getGetAdminFinanceChargesQueryKey,
+  useRecordAdminFinancePayment,
+  useWaiveAdminFinanceCharge,
+  useGetAdminFinanceExpenses, getGetAdminFinanceExpensesQueryKey,
+  useCreateAdminFinanceExpense,
+  useDeleteAdminFinanceExpense,
+  useGetMySubscription, getGetMySubscriptionQueryKey,
 } from '@workspace/api-client-react';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
@@ -70,15 +81,53 @@ const mainNav = [
 ];
 const residentNav = [
   ['Overview', '/resident/dashboard'], ['My profile', '/resident/profile'], ['Application', '/resident/application'],
+  ['Subscription', '/resident/subscription'],
   ['Petition', '/resident/petition'], ['Voting', '/resident/voting'], ['Receipts', '/resident/receipts'], ['Notifications', '/resident/notifications'],
 ];
 const adminNav = [
   ['Dashboard', '/admin/dashboard'], ['Members', '/admin/members'], ['Verifications', '/admin/verifications'],
-  ['Petitions', '/admin/petitions'], ['Register snapshots', '/admin/register-snapshots'], ['Documents', '/admin/documents'],
+  ['Petitions', '/admin/petitions'], ['Register snapshots', '/admin/register-snapshots'], ['Finance', '/admin/finance'],
+  ['Documents', '/admin/documents'],
   ['Resolutions', '/admin/resolutions'], ['Elections', '/admin/elections'], ['Candidates', '/admin/candidates'],
   ['Results', '/admin/results'], ['Meetings', '/admin/meetings'], ['Announcements', '/admin/announcements'],
   ['Reports', '/admin/reports'], ['Audit logs', '/admin/audit-logs'], ['Settings', '/admin/settings'],
 ];
+/**
+ * Money is stored and sent as integer minor units (ngwee) so no rounding ever
+ * happens in transit. It is only turned into a readable amount here, at the
+ * point of display. A value of 10000 is K100.00.
+ */
+function formatMoney(minorUnits: number | null | undefined, currency = 'ZMW'): string {
+  const value = (minorUnits ?? 0) / 100;
+  return `${currency} ${value.toLocaleString('en-ZM', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+/** Parse a typed Kwacha amount into ngwee, rejecting anything not a number. */
+function parseMoneyToMinorUnits(input: string): number | null {
+  const cleaned = input.replace(/,/g, '').trim();
+  if (cleaned === '') return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value * 100);
+}
+const EXPENSE_CATEGORIES: Array<[string, string]> = [
+  ['printing-stationery', 'Printing and stationery'],
+  ['venue-hire', 'Venue hire'],
+  ['utilities', 'Utilities'],
+  ['security', 'Security'],
+  ['maintenance', 'Maintenance'],
+  ['welfare', 'Welfare'],
+  ['bank-charges', 'Bank charges'],
+  ['transport', 'Transport'],
+  ['other', 'Other'],
+];
+const PAYMENT_METHODS: Array<[string, string]> = [
+  ['mobile-money', 'Mobile money'],
+  ['bank-transfer', 'Bank transfer'],
+  ['cash', 'Cash'],
+];
+const CHARGE_STATUS_LABELS: Record<string, string> = {
+  outstanding: 'Outstanding', 'part-paid': 'Part paid', paid: 'Paid', waived: 'Waived',
+};
 const publicTitles: Record<string, [string, string]> = {
   '/about': ['A process built for trust.', 'How the association is establishing a clear, transparent governance foundation.'],
   '/documents': ['The public record.', 'Approved governance documents are published here with their exact versions.'],
@@ -93,7 +142,8 @@ const publicTitles: Record<string, [string, string]> = {
 };
 const adminCopy: Record<string, string> = {
   '/admin/dashboard': 'Governance workspace overview', '/admin/members': 'Resident membership register', '/admin/verifications': 'Review resident verification',
-  '/admin/petitions': 'Petition configuration and consent', '/admin/register-snapshots': 'Approved register snapshots', '/admin/documents': 'Governance document publishing',
+  '/admin/petitions': 'Petition configuration and consent', '/admin/register-snapshots': 'Approved register snapshots', '/admin/finance': 'Subscriptions, payments and expenses',
+  '/admin/documents': 'Governance document publishing',
   '/admin/resolutions': 'Association resolutions', '/admin/elections': 'Election configuration', '/admin/candidates': 'Candidate register',
   '/admin/results': 'Election results publishing', '/admin/meetings': 'Meetings and minutes', '/admin/announcements': 'Public announcements',
   '/admin/reports': 'Governance reports', '/admin/audit-logs': 'Administrative audit trail', '/admin/settings': 'Roles and administrative access',
@@ -303,6 +353,7 @@ const residentCopy: Record<string, [string, string]> = {
   '/resident/dashboard': ['Your resident portal', 'Your association actions and current application status.'],
   '/resident/profile': ['My profile', 'Account details from your signed-in profile.'],
   '/resident/application': ['Membership application', "Complete the association's registration form for review."],
+  '/resident/subscription': ['Your subscription', 'What you owe for the year, what you have paid, and your payment history.'],
   '/resident/petition': ['Petition consent', 'Review the published versions before any declaration.'],
   '/resident/voting': ['Voting', 'Election eligibility and voting access.'],
   '/resident/receipts': ['Private receipts', 'Your submitted application and consent receipts.'],
@@ -385,8 +436,9 @@ function ResidentPage({ path }: { path: string }) {
       {receipts.isError && <div className="mt-4"><ErrorLine retry={()=>receipts.refetch()} /></div>}
     </div></ResidentLayout>;
   }
-  if (path === '/resident/dashboard') return <ResidentLayout heading={heading} description={description}><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><ResidentCard href="/resident/application" icon={<ClipboardCheck size={19}/>} title="Membership application" text={app.data?.application ? `Status: ${app.data.application.status}` : 'Complete an application for review.'}/><ResidentCard href="/resident/petition" icon={<FileText size={19}/>} title="Petition consent" text="Review the active petition and exact versions."/><ResidentCard href="/resident/receipts" icon={<BadgeCheck size={19}/>} title="Receipts" text="Review receipts from your resident actions."/></div><div className="mt-6">{app.isLoading ? <Skeleton rows={1}/> : app.isError ? <ErrorLine retry={()=>app.refetch()}/> : app.data?.application ? <Notice>Your application is <strong>{app.data.application.status}</strong>. A submitted application does not mean membership has been verified.</Notice> : <Notice>You have not submitted a membership application yet. Begin when you are ready.</Notice>}</div></ResidentLayout>;
+  if (path === '/resident/dashboard') return <ResidentLayout heading={heading} description={description}><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><ResidentCard href="/resident/application" icon={<ClipboardCheck size={19}/>} title="Membership application" text={app.data?.application ? `Status: ${app.data.application.status}` : 'Complete an application for review.'}/><ResidentCard href="/resident/subscription" icon={<Landmark size={19}/>} title="Subscription" text="See what you owe and what you have paid."/><ResidentCard href="/resident/petition" icon={<FileText size={19}/>} title="Petition consent" text="Review the active petition and exact versions."/><ResidentCard href="/resident/receipts" icon={<BadgeCheck size={19}/>} title="Receipts" text="Review receipts from your resident actions."/></div><div className="mt-6">{app.isLoading ? <Skeleton rows={1}/> : app.isError ? <ErrorLine retry={()=>app.refetch()}/> : app.data?.application ? <Notice>Your application is <strong>{app.data.application.status}</strong>. A submitted application does not mean membership has been verified.</Notice> : <Notice>You have not submitted a membership application yet. Begin when you are ready.</Notice>}</div></ResidentLayout>;
   if (path === '/resident/profile') return <ResidentLayout heading={heading} description={description}><ProfileView /></ResidentLayout>;
+  if (path === '/resident/subscription') return <ResidentLayout heading={heading} description={description}><ResidentSubscription /></ResidentLayout>;
   if (path === '/resident/voting') return <ResidentLayout heading={heading} description={description}><EmptyPanel title="Voting is not configured" text="No election, candidate list or voting window has been formally published. Eligibility and voting actions will appear when configured." /></ResidentLayout>;
   if (path === '/resident/receipts') return <ResidentLayout heading={heading} description={description}><div className="grid gap-4 md:grid-cols-2">
     <div><h2 className="mb-3 text-sm font-bold text-[#273a51]">Membership application</h2>{app.isLoading ? <Skeleton rows={1}/> : app.isError ? <ErrorLine retry={()=>app.refetch()}/> : app.data?.application ? <div className="rounded-xl border border-[#e1dfd8] bg-white p-5"><p className="font-semibold text-[#1b2e45]">Application {app.data.application.reference}</p><p className="mt-2 text-sm text-[#687486]">Status: {app.data.application.status}</p><p className="mt-1 text-xs text-[#87918e]">Submitted {new Date(app.data.application.submittedAt).toLocaleDateString()}</p></div> : <EmptyPanel title="No application receipt" text="Once you submit an application, its status and reference appear here." />}</div>
@@ -488,6 +540,46 @@ function PetitionConsentForm({ isPending, onSubmit }: { isPending: boolean; onSu
 function ResidentCard({href,icon,title,text}:{href:string;icon:ReactNode;title:string;text:string}) { return <Link href={href} className="group rounded-2xl border border-[#e1dfd8] bg-white p-5 transition-colors hover:border-[#b8c9b7]"><span className="grid size-10 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]">{icon}</span><h2 className="mt-4 font-semibold text-[#1c2e44]">{title}</h2><p className="mt-1 text-sm leading-6 text-[#687486]">{text}</p><span className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#477454]">Open <ArrowRight size={13}/></span></Link>; }
 function ProfileView() { const {user,isLoaded}=useUser(); if(!isLoaded) return <Skeleton rows={1}/>; return <div className="max-w-2xl rounded-2xl border border-[#e1dfd8] bg-white p-6"><div className="flex items-center gap-4"><span className="grid size-12 place-items-center rounded-full bg-[#eaf1e8] text-[#477454]"><UserRound size={22}/></span><div><p className="font-semibold text-[#1c2e44]">{user?.fullName || 'Resident account'}</p><p className="text-sm text-[#687486]">{user?.primaryEmailAddress?.emailAddress || 'Email not available'}</p></div></div><div className="mt-6 border-t border-[#e8e6df] pt-5"><Notice>Your account profile is separate from association verification. Verified membership status is determined by the association review process.</Notice></div></div>; }
 
+/**
+ * A member's own subscription. Read-only: the association records payments as
+ * they are received, so this view exists to answer "what do I owe and what have
+ * I paid" without the member having to ask the treasurer.
+ */
+function ResidentSubscription() {
+  const subscription=useGetMySubscription({query:{queryKey:getGetMySubscriptionQueryKey()}});
+  if(subscription.isLoading) return <Skeleton rows={2}/>;
+  if(subscription.isError) return <ErrorLine retry={()=>subscription.refetch()}/>;
+  const charges=subscription.data?.charges??[];
+  const currency=subscription.data?.currency??'ZMW';
+  if(charges.length===0) return <div className="max-w-2xl"><EmptyPanel title="No subscription raised yet" text="Once the association raises this year's subscription, what you owe and what you have paid will appear here." /></div>;
+  return <div className="max-w-2xl space-y-4">
+    {charges.map(charge=>(
+      <div key={charge.id} className="rounded-2xl border border-[#e1dfd8] bg-white p-6" data-testid="resident-subscription">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-semibold text-[#1c2e44]">{charge.year} subscription{charge.membershipNumber&&<span className="ml-2 font-mono text-xs text-[#738090]">{charge.membershipNumber}</span>}</p>
+            {charge.dueDate&&<p className="mt-1 text-xs text-[#738090]">Due {charge.dueDate}</p>}
+          </div>
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${charge.status==='paid'?'bg-[#e7f2e9] text-[#315f43]':charge.status==='waived'?'bg-[#eef0ea] text-[#596778]':charge.status==='part-paid'?'bg-[#fdf3e3] text-[#8a6220]':'bg-[#fdf0f0] text-[#a33b3b]'}`}>{CHARGE_STATUS_LABELS[charge.status]??charge.status}</span>
+        </div>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[['Amount due',charge.amountDue],['Paid',charge.amountPaid],['Relief granted',charge.amountWaived],['Balance',charge.balance]].map(([label,value])=>(
+            <div key={label as string} className="flex items-center justify-between rounded-lg border border-[#eef0ea] px-3 py-2 text-sm"><dt className="text-[#687486]">{label as string}</dt><dd className="font-semibold text-[#1c2e44]">{formatMoney(value as number,currency)}</dd></div>))}
+        </dl>
+        {charge.payments.length>0&&<div className="mt-5 border-t border-[#e8e6df] pt-4">
+          <p className="text-sm font-semibold text-[#1c2e44]">Payments received</p>
+          <div className="mt-3 space-y-2">{charge.payments.map(payment=>
+            <div key={payment.id} className="flex items-center justify-between rounded-lg border border-[#eef0ea] px-3 py-2 text-sm">
+              <span className="text-[#687486]">{payment.paidOn} · {PAYMENT_METHODS.find(([k])=>k===payment.method)?.[1]??payment.method}{payment.reference?` · ${payment.reference}`:''}</span>
+              <span className="font-semibold text-[#1c2e44]">{formatMoney(payment.amount,currency)}</span>
+            </div>)}
+          </div>
+        </div>}
+      </div>))}
+    <Notice>Relief granted means the association agreed to waive part of what was owed; it is not a payment.</Notice>
+  </div>;
+}
+
 function AdminPage({path}:{path:string}) {
   const title=adminCopy[path]||'Administration';
   const {isSignedIn}=useUser();
@@ -496,6 +588,7 @@ function AdminPage({path}:{path:string}) {
   const isManagementPage=path==='/admin/members'||path==='/admin/verifications';
   const isReviewer=access.data?.role==='admin'||access.data?.role==='administrator'||access.data?.role==='returning-officer';
   const isAdmin=access.data?.role==='admin'||access.data?.role==='administrator';
+  const isFinance=isAdmin||access.data?.role==='treasurer';
   return <Protected><Show when="signed-in"><AppShell>
     {access.isLoading?<div className="mx-auto max-w-3xl px-5 py-16"><Skeleton rows={2}/></div>
     :access.isError?<div className="mx-auto max-w-3xl px-5 py-16"><ErrorLine retry={()=>access.refetch()}/></div>
@@ -509,6 +602,7 @@ function AdminPage({path}:{path:string}) {
           :path==='/admin/verifications' ? <AdminPetitionPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPollResultsQueryKey()});}}/>
           :path==='/admin/petitions' ? <AdminPetitionConfigurationPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPetitionQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
           :path==='/admin/register-snapshots' ? <AdminRegisterSnapshotsPanel onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
+          :path==='/admin/finance' ? <AdminFinancePanel canManage={isFinance}/>
           :path==='/admin/settings' ? <AdminRolesPanel isAdmin={isAdmin}/>
           :isManagementPage ? <AdminApplicationsPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});}}/>
           :<div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">This workflow is not configured.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">No approved official records are available for this page. Configuration and publishing actions are not enabled until the Association supplies and approves the required rules and source documents.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/documents" className="btn-secondary">View public documents <ArrowUpRight size={14}/></Link><Link href="/announcements" className="btn-secondary">Public notices <ArrowUpRight size={14}/></Link></div></div>}
@@ -766,6 +860,7 @@ function AdminRolesPanel({isAdmin}:{isAdmin:boolean}) {
         <label className="text-sm font-medium text-[#33445a]">Role
           <select value={role} onChange={event=>setRole(event.target.value)} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">
             <option value="administrator">Administrator (full access)</option>
+            <option value="treasurer">Treasurer (finance only)</option>
             <option value="returning-officer">Returning Officer</option>
             <option value="scrutineer">Scrutineer</option>
             <option value="resident">Resident</option>
@@ -790,8 +885,254 @@ function AdminRolesPanel({isAdmin}:{isAdmin:boolean}) {
       </div>)}</div>}
     </div>
     <div className="rounded-2xl border border-[#e1dfd8] bg-[#fbfaf6] p-5">
-      <p className="text-xs leading-6 text-[#687486]"><span className="font-semibold text-[#33445a]">Administrator:</span> full access to every workflow, including roles. <span className="font-semibold text-[#33445a]">Returning Officer:</span> verifies applications and signatures, and approves or closes the petition. <span className="font-semibold text-[#33445a]">Scrutineer:</span> read access to the administrative views for independent oversight. <span className="font-semibold text-[#33445a]">Resident:</span> the standard member role. You cannot remove your own administrator role.</p>
+      <p className="text-xs leading-6 text-[#687486]"><span className="font-semibold text-[#33445a]">Administrator:</span> full access to every workflow, including roles and finance. <span className="font-semibold text-[#33445a]">Treasurer:</span> the finance register only — subscriptions, payments and expenses. <span className="font-semibold text-[#33445a]">Returning Officer:</span> verifies applications and signatures, and approves or closes the petition. <span className="font-semibold text-[#33445a]">Scrutineer:</span> read access to the administrative views for independent oversight. <span className="font-semibold text-[#33445a]">Resident:</span> the standard member role. You cannot remove your own administrator role.</p>
     </div>
+  </div>;
+}
+
+function AdminFinancePanel({canManage}:{canManage:boolean}) {
+  const queryClient=useQueryClient();
+  const [tab,setTab]=useState<'overview'|'subscriptions'|'expenses'>('overview');
+  const [error,setError]=useState('');
+  const [message,setMessage]=useState('');
+  const [share,setShare]=useState<Record<string,string>>({});
+  const [paymentDrafts,setPaymentDrafts]=useState<Record<string,{amount:string;method:string;reference:string;paidOn:string;receivedBy:string}>>({});
+  const [waiverDrafts,setWaiverDrafts]=useState<Record<string,{amount:string;reason:string}>>({});
+  const [chargeFilter,setChargeFilter]=useState('');
+  const [periodForm,setPeriodForm]=useState({year:String(new Date().getFullYear()),low:'50',standard:'100',high:'150',label:'',notes:''});
+  const [expenseForm,setExpenseForm]=useState({category:'printing-stationery',description:'',amount:'',paidOn:new Date().toISOString().slice(0,10),payee:'',method:'cash',receiptReference:'',notes:'',periodId:''});
+
+  const overview=useGetAdminFinanceOverview({query:{queryKey:getGetAdminFinanceOverviewQueryKey(),enabled:canManage}});
+  const periods=useGetAdminFinancePeriods({query:{queryKey:getGetAdminFinancePeriodsQueryKey(),enabled:canManage}});
+  const chargeParams={page:1,pageSize:50,...(chargeFilter?{status:chargeFilter as 'outstanding'|'part-paid'|'paid'|'waived'}:{})};
+  const charges=useGetAdminFinanceCharges(chargeParams,{query:{queryKey:getGetAdminFinanceChargesQueryKey(chargeParams),enabled:canManage&&tab==='subscriptions'}});
+  const expenses=useGetAdminFinanceExpenses({page:1,pageSize:50},{query:{queryKey:getGetAdminFinanceExpensesQueryKey({page:1,pageSize:50}),enabled:canManage&&tab==='expenses'}});
+
+  const createPeriod=useCreateAdminFinancePeriod();
+  const generate=useGenerateAdminFinanceCharges();
+  const recordPayment=useRecordAdminFinancePayment();
+  const waive=useWaiveAdminFinanceCharge();
+  const createExpense=useCreateAdminFinanceExpense();
+  const deleteExpense=useDeleteAdminFinanceExpense();
+
+  const refreshAll=()=>{
+    queryClient.invalidateQueries({queryKey:getGetAdminFinanceOverviewQueryKey()});
+    queryClient.invalidateQueries({queryKey:getGetAdminFinancePeriodsQueryKey()});
+    queryClient.invalidateQueries({queryKey:getGetAdminFinanceChargesQueryKey(chargeParams)});
+    queryClient.invalidateQueries({queryKey:getGetAdminFinanceExpensesQueryKey({page:1,pageSize:50})});
+  };
+
+  if(!canManage)return <div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">Finance access required.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">Only an administrator or treasurer can view or change subscription and expense records. Ask an administrator to grant you the treasurer role on the Settings page.</p></div>;
+
+  const currentPeriod=overview.data?.period??null;
+  const periodList=periods.data??[];
+  const chargeItems=(charges.data?.items??[]) as any[];
+  const expenseItems=(expenses.data?.items??[]) as any[];
+
+  const submitPeriod=(event:FormEvent)=>{
+    event.preventDefault();setError('');setMessage('');
+    const low=parseMoneyToMinorUnits(periodForm.low);const standard=parseMoneyToMinorUnits(periodForm.standard);const high=parseMoneyToMinorUnits(periodForm.high);
+    const year=Number(periodForm.year);
+    if(!Number.isInteger(year)||year<2000||year>2200){setError('Enter a four-digit subscription year between 2000 and 2200.');return;}
+    if(low===null||standard===null||high===null){setError('Enter the three tier amounts as positive Kwacha figures, for example 50, 100 and 150.');return;}
+    if(low>standard||standard>high){setError('The tiers must not overlap: low must be the smallest and high the largest.');return;}
+    createPeriod.mutate({data:{year,amountTierLow:low,amountTierStandard:standard,amountTierHigh:high,currency:'ZMW',label:periodForm.label.trim()||null,notes:periodForm.notes.trim()||null}},{
+      onSuccess:()=>{setMessage(`Subscription year ${year} created. Raise the charges when you are ready.`);refreshAll();},
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The period could not be created.'),
+    });
+  };
+
+  const raiseCharges=(periodId:string,year:number)=>generate.mutate({id:periodId},{
+    onSuccess:(result:any)=>setMessage(`Year ${year}: ${result.created} charge(s) raised${result.alreadyCharged?`, ${result.alreadyCharged} already billed`:''}. Total billed ${formatMoney(result.amountBilled)}.`),
+    onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'Charges could not be raised.'),
+  });
+
+  const paymentDraft=(item:any)=>paymentDrafts[item.id]??{amount:((item.balance||0)/100).toFixed(2),method:'mobile-money',reference:'',paidOn:new Date().toISOString().slice(0,10),receivedBy:''};
+  const submitPayment=(item:any)=>{
+    setError('');setMessage('');
+    const draft=paymentDraft(item);
+    const amount=parseMoneyToMinorUnits(draft.amount);
+    if(amount===null){setError('Enter the amount received as a positive Kwacha figure.');return;}
+    recordPayment.mutate({id:item.id,data:{amount,method:draft.method as any,reference:draft.reference.trim()||null,paidOn:draft.paidOn,receivedBy:draft.receivedBy.trim()||null}},{
+      onSuccess:(saved:any)=>{setMessage(`Payment recorded for ${item.memberName}. Balance is now ${formatMoney(saved.balance)}.`);refreshAll();},
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The payment could not be recorded.'),
+    });
+  };
+  const submitWaiver=(item:any)=>{
+    setError('');setMessage('');
+    const draft=waiverDrafts[item.id]??{amount:((item.balance||0)/100).toFixed(2),reason:''};
+    const amount=parseMoneyToMinorUnits(draft.amount);
+    if(amount===null){setError('Enter the amount to waive as a positive Kwacha figure.');return;}
+    if(draft.reason.trim().length<3){setError('Give a short reason for the relief, so the decision is on the record.');return;}
+    waive.mutate({id:item.id,data:{amount,reason:draft.reason.trim()}},{
+      onSuccess:()=>{setMessage(`Relief recorded for ${item.memberName}.`);refreshAll();},
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The waiver could not be recorded.'),
+    });
+  };
+  const submitExpense=(event:FormEvent)=>{
+    event.preventDefault();setError('');setMessage('');
+    const amount=parseMoneyToMinorUnits(expenseForm.amount);
+    if(!expenseForm.description.trim()){setError('Describe what the money was spent on.');return;}
+    if(amount===null){setError('Enter the amount spent as a positive Kwacha figure.');return;}
+    createExpense.mutate({data:{category:expenseForm.category as any,description:expenseForm.description.trim(),amount,paidOn:expenseForm.paidOn,payee:expenseForm.payee.trim()||null,method:expenseForm.method as any,receiptReference:expenseForm.receiptReference.trim()||null,notes:expenseForm.notes.trim()||null,periodId:(expenseForm.periodId||currentPeriod?.id)||null}},{
+      onSuccess:()=>{setMessage('Expense recorded.');setExpenseForm({...expenseForm,description:'',amount:'',payee:'',receiptReference:'',notes:''});refreshAll();},
+      onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The expense could not be recorded.'),
+    });
+  };
+
+  const stat=(label:string,value:string,sub?:string)=>(
+    <div className="rounded-xl border border-[#e8e6df] bg-white p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#738090]">{label}</p>
+      <p className="mt-1.5 serif text-2xl font-bold text-[#1c2e44]">{value}</p>
+      {sub&&<p className="mt-1 text-xs text-[#738090]">{sub}</p>}
+    </div>
+  );
+
+  return <div className="space-y-6" data-testid="admin-finance">
+    <div className="flex flex-wrap gap-2">
+      {([['overview','Overview'],['subscriptions','Subscriptions'],['expenses','Expenses']] as const).map(([key,label])=>
+        <button key={key} type="button" onClick={()=>setTab(key)} data-testid={`finance-tab-${key}`} className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${tab===key?'bg-[#315f43] text-white':'border border-[#d8d6cf] bg-white text-[#596778] hover:bg-[#f4f3ed]'}`}>{label}</button>)}
+    </div>
+    {error&&<p className="rounded-xl border border-[#e7cccc] bg-[#fdf4f4] px-4 py-3 text-sm text-[#a33b3b]" data-testid="finance-error">{error}</p>}
+    {message&&<p className="rounded-xl border border-[#cfe0d3] bg-[#f2f8f3] px-4 py-3 text-sm text-[#315f43]" data-testid="finance-message">{message}</p>}
+
+    {tab==='overview'&&<>
+      <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="font-semibold text-[#1c2e44]">Subscription year</h2>
+            {currentPeriod?<p className="mt-1 text-sm text-[#687486]">{currentPeriod.year} · low {formatMoney(currentPeriod.amountTierLow,currentPeriod.currency)}, standard {formatMoney(currentPeriod.amountTierStandard,currentPeriod.currency)}, high {formatMoney(currentPeriod.amountTierHigh,currentPeriod.currency)} · <span className="font-semibold uppercase tracking-wide text-[#477454]">{currentPeriod.status}</span></p>
+            :<p className="mt-1 text-sm text-[#687486]">No subscription year has been set up yet. Create one below to begin billing members.</p>}
+          </div>
+          {currentPeriod&&<button type="button" onClick={()=>raiseCharges(currentPeriod.id,currentPeriod.year)} disabled={generate.isPending} data-testid="finance-generate" className="btn-primary disabled:opacity-50">{generate.isPending?'Raising…':'Raise charges for verified members'} <ArrowRight size={15} /></button>}
+        </div>
+      </div>
+
+      {overview.isLoading?<Skeleton rows={3}/>:overview.isError?<ErrorLine retry={()=>overview.refetch()}/>:overview.data&&<>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {stat('Billed','K '+((overview.data.amountBilled||0)/100).toFixed(2),`${overview.data.membersCharged} member(s) charged`)}
+          {stat('Collected','K '+((overview.data.amountCollected||0)/100).toFixed(2),`${overview.data.fullyPaid} fully paid · ${overview.data.partPaid} part paid`)}
+          {stat('Outstanding','K '+((overview.data.amountOutstanding||0)/100).toFixed(2),`${overview.data.outstanding} member(s) still to pay`)}
+          {stat('Spent','K '+((overview.data.amountSpent||0)/100).toFixed(2),'Recorded expenditure this year')}
+        </div>
+        <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+          <h3 className="font-semibold text-[#1c2e44]">How the year is going</h3>
+          <p className="mt-2 text-sm leading-6 text-[#687486]">Money in less money out, and the relief granted by the committee. The figures below always reconcile to the amount billed.</p>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+            {[['Collected',overview.data.amountCollected],['Relief granted',overview.data.amountWaived],['Still outstanding',overview.data.amountOutstanding],['Received in advance',overview.data.creditBalance],['Funds held',overview.data.balance]].map(([label,value])=>
+              <div key={label as string} className="flex items-center justify-between rounded-lg border border-[#eef0ea] px-3 py-2"><dt className="text-[#687486]">{label as string}</dt><dd className="font-semibold text-[#1c2e44]">K {((value as number||0)/100).toFixed(2)}</dd></div>)}
+          </dl>
+          {overview.data.amountWaived>0&&<p className="mt-3 text-xs text-[#738090]">{overview.data.waived} charge(s) fully waived.</p>}
+        </div>
+        {overview.data.byCategory.length>0&&<div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+          <h3 className="font-semibold text-[#1c2e44]">Where the money went</h3>
+          <div className="mt-4 space-y-2">{overview.data.byCategory.map(row=>
+            <div key={row.category} className="flex items-center justify-between rounded-lg border border-[#eef0ea] px-3 py-2 text-sm"><span className="text-[#33445a]">{EXPENSE_CATEGORIES.find(([k])=>k===row.category)?.[1]??row.category}</span><span className="font-semibold text-[#1c2e44]">K {(row.amount/100).toFixed(2)} <span className="font-normal text-[#738090]">· {row.entries}</span></span></div>)}
+          </div>
+        </div>}
+        {overview.data.recentPayments.length>0&&<div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+          <h3 className="font-semibold text-[#1c2e44]">Recent payments</h3>
+          <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm">
+            <thead><tr className="text-[11px] uppercase tracking-wide text-[#738090]"><th className="py-2 pr-4">Date</th><th className="py-2 pr-4">Member</th><th className="py-2 pr-4">Method</th><th className="py-2 pr-4">Reference</th><th className="py-2 text-right">Amount</th></tr></thead>
+            <tbody>{overview.data.recentPayments.map(payment=>
+              <tr key={payment.id} className="border-t border-[#eef0ea]"><td className="py-2 pr-4 text-[#687486]">{payment.paidOn}</td><td className="py-2 pr-4 text-[#1c2e44]">{payment.memberName??'—'}</td><td className="py-2 pr-4 text-[#687486]">{PAYMENT_METHODS.find(([k])=>k===payment.method)?.[1]??payment.method}</td><td className="py-2 pr-4 font-mono text-xs text-[#687486]">{payment.reference??'—'}</td><td className="py-2 text-right font-semibold text-[#1c2e44]">K {(payment.amount/100).toFixed(2)}</td></tr>)}
+            </tbody></table></div>
+        </div>}
+      </>}
+
+      <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+        <h3 className="font-semibold text-[#1c2e44]">Subscription years</h3>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#687486]">Each year holds its own three tier amounts, so changing next year's figures never rewrites last year's record.</p>
+        <form onSubmit={submitPeriod} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="finance-period-form">
+          <label className="text-sm font-medium text-[#33445a]">Year<input value={periodForm.year} onChange={e=>setPeriodForm({...periodForm,year:e.target.value})} placeholder="2026" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Low tier (K)<input value={periodForm.low} onChange={e=>setPeriodForm({...periodForm,low:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Standard tier (K)<input value={periodForm.standard} onChange={e=>setPeriodForm({...periodForm,standard:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">High tier (K)<input value={periodForm.high} onChange={e=>setPeriodForm({...periodForm,high:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a] lg:col-span-2">Label<input value={periodForm.label} onChange={e=>setPeriodForm({...periodForm,label:e.target.value})} placeholder="Optional, for example 2026 subscriptions" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <div className="lg:col-span-3"><button type="submit" disabled={createPeriod.isPending} data-testid="finance-create-period" className="btn-primary disabled:opacity-50">{createPeriod.isPending?'Creating…':'Create subscription year'} <ArrowRight size={15} /></button></div>
+        </form>
+        {periods.isLoading?<div className="mt-5"><Skeleton rows={2}/></div>:periods.isError?<div className="mt-5"><ErrorLine retry={()=>periods.refetch()}/></div>
+        :periodList.length>0&&<div className="mt-5 space-y-3">{periodList.map(period=>
+          <div key={period.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e6df] p-4">
+            <div><p className="font-semibold text-[#1c2e44]">{period.year} <span className="ml-1 text-xs font-semibold uppercase tracking-wide text-[#477454]">{period.status}</span></p>
+            <p className="mt-1 text-xs text-[#738090]">Low {formatMoney(period.amountTierLow,period.currency)} · standard {formatMoney(period.amountTierStandard,period.currency)} · high {formatMoney(period.amountTierHigh,period.currency)} · {period.chargeCount??0} charged · {formatMoney(period.amountCollected??0,period.currency)} collected</p></div>
+            <button type="button" onClick={()=>raiseCharges(period.id,period.year)} disabled={generate.isPending||period.status==='closed'} className="btn-secondary disabled:opacity-50">Raise charges</button>
+          </div>)}
+        </div>}
+      </div>
+    </>}
+
+    {tab==='subscriptions'&&<div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="font-semibold text-[#1c2e44]">Member subscriptions</h2>
+        <p className="mt-1 text-sm leading-6 text-[#687486]">Record a payment as it is received. Partial payments are allowed, and the balance updates automatically.</p></div>
+        <label className="text-sm text-[#33445a]">Show<select value={chargeFilter} onChange={e=>setChargeFilter(e.target.value)} className="ml-2 rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm"><option value="">Everyone</option><option value="outstanding">Outstanding only</option><option value="part-paid">Part paid</option><option value="paid">Paid</option><option value="waived">Waived</option></select></label>
+      </div>
+      {charges.isLoading?<div className="mt-5"><Skeleton rows={4}/></div>:charges.isError?<div className="mt-5"><ErrorLine retry={()=>charges.refetch()}/></div>
+      :chargeItems.length===0?<p className="mt-4 text-sm text-[#687486]">No charges have been raised yet. Set up a subscription year and raise charges on the Overview tab.</p>
+      :<div className="mt-5 space-y-3">{chargeItems.map((item:any)=>{const draft=paymentDraft(item);const waiver=waiverDrafts[item.id]??{amount:((item.balance||0)/100).toFixed(2),reason:''};return (
+        <div key={item.id} className="rounded-xl border border-[#e8e6df] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-[#1c2e44]">{item.memberName}{item.membershipNumber&&<span className="ml-2 font-mono text-xs text-[#738090]">{item.membershipNumber}</span>}</p>
+              <p className="mt-1 text-xs text-[#738090]">{item.periodYear} · house {item.houseNumber??'—'}{item.streetOrZone?`, ${item.streetOrZone}`:''} · due {formatMoney(item.amountDue)}</p>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${item.status==='paid'?'bg-[#e7f2e9] text-[#315f43]':item.status==='waived'?'bg-[#eef0ea] text-[#596778]':item.status==='part-paid'?'bg-[#fdf3e3] text-[#8a6220]':'bg-[#fdf0f0] text-[#a33b3b]'}`}>{CHARGE_STATUS_LABELS[item.status]??item.status}</span>
+          </div>
+          <div className="mt-3 grid gap-2 text-xs text-[#687486] sm:grid-cols-4">
+            <span>Paid: <span className="font-semibold text-[#1c2e44]">{formatMoney(item.amountPaid)}</span></span>
+            <span>Relief: <span className="font-semibold text-[#1c2e44]">{formatMoney(item.amountWaived)}</span></span>
+            <span>Balance: <span className="font-semibold text-[#1c2e44]">{formatMoney(item.balance)}</span></span>
+            <span>Reminders: <span className="font-semibold text-[#1c2e44]">{item.reminderCount??0}</span></span>
+          </div>
+          {item.status!=='paid'&&item.status!=='waived'&&<div className="mt-4 grid gap-3 border-t border-[#eef0ea] pt-4 sm:grid-cols-2 lg:grid-cols-5">
+            <label className="text-xs font-medium text-[#33445a]">Amount (K)<input value={draft.amount} onChange={e=>setPaymentDrafts({...paymentDrafts,[item.id]:{...draft,amount:e.target.value}})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-medium text-[#33445a]">Method<select value={draft.method} onChange={e=>setPaymentDrafts({...paymentDrafts,[item.id]:{...draft,method:e.target.value}})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">{PAYMENT_METHODS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
+            <label className="text-xs font-medium text-[#33445a]">Date<input type="date" value={draft.paidOn} onChange={e=>setPaymentDrafts({...paymentDrafts,[item.id]:{...draft,paidOn:e.target.value}})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-medium text-[#33445a]">Reference<input value={draft.reference} onChange={e=>setPaymentDrafts({...paymentDrafts,[item.id]:{...draft,reference:e.target.value}})} placeholder="Receipt or transfer" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-medium text-[#33445a]">Received by<input value={draft.receivedBy} onChange={e=>setPaymentDrafts({...paymentDrafts,[item.id]:{...draft,receivedBy:e.target.value}})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+            <div className="sm:col-span-2 lg:col-span-5"><button type="button" onClick={()=>submitPayment(item)} disabled={recordPayment.isPending} data-testid={`finance-record-payment-${item.id}`} className="btn-primary disabled:opacity-50">Record payment</button></div>
+          </div>}
+          {item.status!=='paid'&&item.status!=='waived'&&<div className="mt-3 grid gap-3 border-t border-[#eef0ea] pt-4 sm:grid-cols-4">
+            <label className="text-xs font-medium text-[#33445a]">Waive (K)<input value={waiver.amount} onChange={e=>setWaiverDrafts({...waiverDrafts,[item.id]:{...waiver,amount:e.target.value}})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-medium text-[#33445a] sm:col-span-2">Reason<input value={waiver.reason} onChange={e=>setWaiverDrafts({...waiverDrafts,[item.id]:{...waiver,reason:e.target.value}})} placeholder="Why relief was granted" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+            <div className="flex items-end"><button type="button" onClick={()=>submitWaiver(item)} disabled={waive.isPending} className="btn-secondary disabled:opacity-50">Record relief</button></div>
+          </div>}
+        </div>);})}
+      </div>}
+    </div>}
+
+    {tab==='expenses'&&<>
+      <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+        <h2 className="font-semibold text-[#1c2e44]">Record money paid out</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-[#687486]">Every expense carries a category and a date, so the year's spending can be totalled and defended.</p>
+        <form onSubmit={submitExpense} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="finance-expense-form">
+          <label className="text-sm font-medium text-[#33445a] lg:col-span-2">Description<input value={expenseForm.description} onChange={e=>setExpenseForm({...expenseForm,description:e.target.value})} placeholder="What was it for" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Category<select value={expenseForm.category} onChange={e=>setExpenseForm({...expenseForm,category:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">{EXPENSE_CATEGORIES.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
+          <label className="text-sm font-medium text-[#33445a]">Amount (K)<input value={expenseForm.amount} onChange={e=>setExpenseForm({...expenseForm,amount:e.target.value})} placeholder="0.00" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Date paid<input type="date" value={expenseForm.paidOn} onChange={e=>setExpenseForm({...expenseForm,paidOn:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Paid by<select value={expenseForm.method} onChange={e=>setExpenseForm({...expenseForm,method:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">{PAYMENT_METHODS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
+          <label className="text-sm font-medium text-[#33445a]">Payee<input value={expenseForm.payee} onChange={e=>setExpenseForm({...expenseForm,payee:e.target.value})} placeholder="Who was paid" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Receipt reference<input value={expenseForm.receiptReference} onChange={e=>setExpenseForm({...expenseForm,receiptReference:e.target.value})} placeholder="Optional" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <label className="text-sm font-medium text-[#33445a]">Subscription year<select value={expenseForm.periodId||currentPeriod?.id||''} onChange={e=>setExpenseForm({...expenseForm,periodId:e.target.value})} className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm">{periodList.map(p=><option key={p.id} value={p.id}>{p.year}</option>)}</select></label>
+          <label className="text-sm font-medium text-[#33445a] lg:col-span-3">Notes<input value={expenseForm.notes} onChange={e=>setExpenseForm({...expenseForm,notes:e.target.value})} placeholder="Optional" className="mt-1 w-full rounded-lg border border-[#d8d6cf] px-3 py-2 text-sm" /></label>
+          <div className="lg:col-span-3"><button type="submit" disabled={createExpense.isPending} data-testid="finance-create-expense" className="btn-primary disabled:opacity-50">{createExpense.isPending?'Recording…':'Record expense'} <ArrowRight size={15} /></button></div>
+        </form>
+      </div>
+      <div className="rounded-2xl border border-[#e1dfd8] bg-white p-6">
+        <h3 className="font-semibold text-[#1c2e44]">Recorded expenditure</h3>
+        {expenses.isLoading?<div className="mt-4"><Skeleton rows={3}/></div>:expenses.isError?<div className="mt-4"><ErrorLine retry={()=>expenses.refetch()}/></div>
+        :expenseItems.length===0?<p className="mt-3 text-sm text-[#687486]">Nothing has been recorded as spent yet.</p>
+        :<div className="mt-4 space-y-3">{expenseItems.map((item:any)=>
+          <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e8e6df] p-4">
+            <div><p className="font-semibold text-[#1c2e44]">{item.description}</p>
+            <p className="mt-1 text-xs text-[#738090]">{EXPENSE_CATEGORIES.find(([k])=>k===item.category)?.[1]??item.category} · {item.paidOn}{item.payee?` · ${item.payee}`:''}{item.receiptReference?` · ${item.receiptReference}`:''}{item.periodYear?` · ${item.periodYear}`:''}</p></div>
+            <div className="flex items-center gap-3"><span className="font-semibold text-[#1c2e44]">{formatMoney(item.amount)}</span>
+            <button type="button" onClick={()=>deleteExpense.mutate({id:item.id},{onSuccess:()=>{setMessage('Expense removed.');refreshAll();},onError:(raw:any)=>setError(raw?.data?.error||raw?.message||'The expense could not be removed.')})} disabled={deleteExpense.isPending} className="btn-secondary disabled:opacity-50">Remove</button></div>
+          </div>)}
+        </div>}
+      </div>
+    </>}
   </div>;
 }
 

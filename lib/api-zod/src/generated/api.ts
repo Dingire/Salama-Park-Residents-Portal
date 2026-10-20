@@ -803,3 +803,530 @@ export const RevokeAdminRoleResponse = zod.object({
 })
 
 
+/**
+ * @summary Subscription and expenditure totals for the active period
+ */
+export const getAdminFinanceOverviewResponsePeriodAmountTierLowMin = 0;
+
+export const getAdminFinanceOverviewResponsePeriodAmountTierStandardMin = 0;
+
+export const getAdminFinanceOverviewResponsePeriodAmountTierHighMin = 0;
+
+export const getAdminFinanceOverviewResponseMembersChargedMin = 0;
+
+export const getAdminFinanceOverviewResponseFullyPaidMin = 0;
+
+export const getAdminFinanceOverviewResponsePartPaidMin = 0;
+
+export const getAdminFinanceOverviewResponseOutstandingMin = 0;
+
+export const getAdminFinanceOverviewResponseWaivedMin = 0;
+
+export const getAdminFinanceOverviewResponseAmountBilledMin = 0;
+
+export const getAdminFinanceOverviewResponseAmountCollectedMin = 0;
+
+export const getAdminFinanceOverviewResponseAmountOutstandingMin = 0;
+
+export const getAdminFinanceOverviewResponseAmountWaivedMin = 0;
+
+export const getAdminFinanceOverviewResponseAmountSpentMin = 0;
+
+export const getAdminFinanceOverviewResponseCreditBalanceMin = 0;
+
+export const getAdminFinanceOverviewResponseByCategoryItemAmountMin = 0;
+
+export const getAdminFinanceOverviewResponseByCategoryItemEntriesMin = 0;
+
+export const getAdminFinanceOverviewResponseRecentPaymentsItemAmountMin = 0;
+
+
+
+export const GetAdminFinanceOverviewResponse = zod.object({
+  "period": zod.object({
+  "id": zod.string().uuid(),
+  "year": zod.number().int(),
+  "currency": zod.string(),
+  "label": zod.string().nullish(),
+  "amountTierLow": zod.number().int().min(getAdminFinanceOverviewResponsePeriodAmountTierLowMin),
+  "amountTierStandard": zod.number().int().min(getAdminFinanceOverviewResponsePeriodAmountTierStandardMin),
+  "amountTierHigh": zod.number().int().min(getAdminFinanceOverviewResponsePeriodAmountTierHighMin),
+  "status": zod.enum(['open', 'closed']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "chargeCount": zod.number().int().nullish(),
+  "amountBilled": zod.number().int().nullish(),
+  "amountCollected": zod.number().int().nullish()
+}).nullable(),
+  "membersCharged": zod.number().int().min(getAdminFinanceOverviewResponseMembersChargedMin),
+  "fullyPaid": zod.number().int().min(getAdminFinanceOverviewResponseFullyPaidMin),
+  "partPaid": zod.number().int().min(getAdminFinanceOverviewResponsePartPaidMin),
+  "outstanding": zod.number().int().min(getAdminFinanceOverviewResponseOutstandingMin),
+  "waived": zod.number().int().min(getAdminFinanceOverviewResponseWaivedMin),
+  "amountBilled": zod.number().int().min(getAdminFinanceOverviewResponseAmountBilledMin),
+  "amountCollected": zod.number().int().min(getAdminFinanceOverviewResponseAmountCollectedMin),
+  "amountOutstanding": zod.number().int().min(getAdminFinanceOverviewResponseAmountOutstandingMin),
+  "amountWaived": zod.number().int().min(getAdminFinanceOverviewResponseAmountWaivedMin),
+  "amountSpent": zod.number().int().min(getAdminFinanceOverviewResponseAmountSpentMin),
+  "creditBalance": zod.number().int().min(getAdminFinanceOverviewResponseCreditBalanceMin),
+  "balance": zod.number().int(),
+  "byCategory": zod.array(zod.object({
+  "category": zod.string(),
+  "amount": zod.number().int().min(getAdminFinanceOverviewResponseByCategoryItemAmountMin),
+  "entries": zod.number().int().min(getAdminFinanceOverviewResponseByCategoryItemEntriesMin)
+})),
+  "recentPayments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "chargeId": zod.string().uuid(),
+  "memberName": zod.string().nullish(),
+  "membershipNumber": zod.string().nullish(),
+  "amount": zod.number().int().min(getAdminFinanceOverviewResponseRecentPaymentsItemAmountMin),
+  "method": zod.enum(['mobile-money', 'bank-transfer', 'cash']),
+  "reference": zod.string().nullish(),
+  "paidOn": zod.string(),
+  "receivedBy": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional()
+}))
+})
+
+
+/**
+ * @summary List subscription periods and their tier amounts
+ */
+export const getAdminFinancePeriodsResponseAmountTierLowMin = 0;
+
+export const getAdminFinancePeriodsResponseAmountTierStandardMin = 0;
+
+export const getAdminFinancePeriodsResponseAmountTierHighMin = 0;
+
+
+
+export const GetAdminFinancePeriodsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "year": zod.number().int(),
+  "currency": zod.string(),
+  "label": zod.string().nullish(),
+  "amountTierLow": zod.number().int().min(getAdminFinancePeriodsResponseAmountTierLowMin),
+  "amountTierStandard": zod.number().int().min(getAdminFinancePeriodsResponseAmountTierStandardMin),
+  "amountTierHigh": zod.number().int().min(getAdminFinancePeriodsResponseAmountTierHighMin),
+  "status": zod.enum(['open', 'closed']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "chargeCount": zod.number().int().nullish(),
+  "amountBilled": zod.number().int().nullish(),
+  "amountCollected": zod.number().int().nullish()
+})
+export const GetAdminFinancePeriodsResponse = zod.array(GetAdminFinancePeriodsResponseItem)
+
+
+/**
+ * @summary Create a subscription period with its tier amounts
+ */
+export const createAdminFinancePeriodBodyYearMin = 2000;
+export const createAdminFinancePeriodBodyYearMax = 2200;
+
+export const createAdminFinancePeriodBodyCurrencyMax = 8;
+
+export const createAdminFinancePeriodBodyLabelMax = 120;
+
+export const createAdminFinancePeriodBodyAmountTierLowMin = 0;
+export const createAdminFinancePeriodBodyAmountTierLowMax = 1000000000;
+
+export const createAdminFinancePeriodBodyAmountTierStandardMin = 0;
+export const createAdminFinancePeriodBodyAmountTierStandardMax = 1000000000;
+
+export const createAdminFinancePeriodBodyAmountTierHighMin = 0;
+export const createAdminFinancePeriodBodyAmountTierHighMax = 1000000000;
+
+export const createAdminFinancePeriodBodyNotesMax = 1000;
+
+
+
+export const CreateAdminFinancePeriodBody = zod.object({
+  "year": zod.number().int().min(createAdminFinancePeriodBodyYearMin).max(createAdminFinancePeriodBodyYearMax),
+  "currency": zod.string().max(createAdminFinancePeriodBodyCurrencyMax).nullish(),
+  "label": zod.string().max(createAdminFinancePeriodBodyLabelMax).nullish(),
+  "amountTierLow": zod.number().int().min(createAdminFinancePeriodBodyAmountTierLowMin).max(createAdminFinancePeriodBodyAmountTierLowMax),
+  "amountTierStandard": zod.number().int().min(createAdminFinancePeriodBodyAmountTierStandardMin).max(createAdminFinancePeriodBodyAmountTierStandardMax),
+  "amountTierHigh": zod.number().int().min(createAdminFinancePeriodBodyAmountTierHighMin).max(createAdminFinancePeriodBodyAmountTierHighMax),
+  "notes": zod.string().max(createAdminFinancePeriodBodyNotesMax).nullish()
+})
+
+export const createAdminFinancePeriodResponseAmountTierLowMin = 0;
+
+export const createAdminFinancePeriodResponseAmountTierStandardMin = 0;
+
+export const createAdminFinancePeriodResponseAmountTierHighMin = 0;
+
+
+
+export const CreateAdminFinancePeriodResponse = zod.object({
+  "id": zod.string().uuid(),
+  "year": zod.number().int(),
+  "currency": zod.string(),
+  "label": zod.string().nullish(),
+  "amountTierLow": zod.number().int().min(createAdminFinancePeriodResponseAmountTierLowMin),
+  "amountTierStandard": zod.number().int().min(createAdminFinancePeriodResponseAmountTierStandardMin),
+  "amountTierHigh": zod.number().int().min(createAdminFinancePeriodResponseAmountTierHighMin),
+  "status": zod.enum(['open', 'closed']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional(),
+  "chargeCount": zod.number().int().nullish(),
+  "amountBilled": zod.number().int().nullish(),
+  "amountCollected": zod.number().int().nullish()
+})
+
+
+/**
+ * @summary Raise subscription charges for every verified member
+ */
+export const GenerateAdminFinanceChargesParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const generateAdminFinanceChargesResponseCreatedMin = 0;
+
+export const generateAdminFinanceChargesResponseAlreadyChargedMin = 0;
+
+export const generateAdminFinanceChargesResponseSkippedMin = 0;
+
+export const generateAdminFinanceChargesResponseAmountBilledMin = 0;
+
+
+
+export const GenerateAdminFinanceChargesResponse = zod.object({
+  "periodId": zod.string().uuid(),
+  "created": zod.number().int().min(generateAdminFinanceChargesResponseCreatedMin),
+  "alreadyCharged": zod.number().int().min(generateAdminFinanceChargesResponseAlreadyChargedMin),
+  "skipped": zod.number().int().min(generateAdminFinanceChargesResponseSkippedMin),
+  "amountBilled": zod.number().int().min(generateAdminFinanceChargesResponseAmountBilledMin)
+})
+
+
+/**
+ * @summary Page through member subscription charges
+ */
+export const getAdminFinanceChargesQuerySearchMax = 120;
+
+export const getAdminFinanceChargesQueryPageDefault = 1;
+
+export const getAdminFinanceChargesQueryPageSizeDefault = 25;
+export const getAdminFinanceChargesQueryPageSizeMax = 100;
+
+
+
+export const GetAdminFinanceChargesQueryParams = zod.object({
+  "periodId": zod.coerce.string().uuid().optional(),
+  "status": zod.enum(['outstanding', 'part-paid', 'paid', 'waived']).optional(),
+  "search": zod.coerce.string().max(getAdminFinanceChargesQuerySearchMax).optional(),
+  "page": zod.coerce.number().int().min(1).default(getAdminFinanceChargesQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getAdminFinanceChargesQueryPageSizeMax).default(getAdminFinanceChargesQueryPageSizeDefault)
+})
+
+export const getAdminFinanceChargesResponseItemsItemAmountDueMin = 0;
+
+export const getAdminFinanceChargesResponseItemsItemAmountPaidMin = 0;
+
+export const getAdminFinanceChargesResponseItemsItemAmountWaivedMin = 0;
+
+export const getAdminFinanceChargesResponseItemsItemReminderCountMin = 0;
+
+export const getAdminFinanceChargesResponseTotalMin = 0;
+
+
+
+
+
+export const GetAdminFinanceChargesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "periodId": zod.string().uuid(),
+  "periodYear": zod.number().int().nullish(),
+  "applicationId": zod.string().uuid(),
+  "membershipNumber": zod.string().nullish(),
+  "memberName": zod.string(),
+  "houseNumber": zod.string().nullish(),
+  "streetOrZone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amountDue": zod.number().int().min(getAdminFinanceChargesResponseItemsItemAmountDueMin),
+  "amountPaid": zod.number().int().min(getAdminFinanceChargesResponseItemsItemAmountPaidMin),
+  "amountWaived": zod.number().int().min(getAdminFinanceChargesResponseItemsItemAmountWaivedMin),
+  "balance": zod.number().int(),
+  "status": zod.enum(['outstanding', 'part-paid', 'paid', 'waived']),
+  "dueDate": zod.string().nullish(),
+  "waivedReason": zod.string().nullish(),
+  "reminderCount": zod.number().int().min(getAdminFinanceChargesResponseItemsItemReminderCountMin).optional(),
+  "lastReminderAt": zod.coerce.date().nullish()
+})),
+  "total": zod.number().int().min(getAdminFinanceChargesResponseTotalMin),
+  "page": zod.number().int().min(1),
+  "pageSize": zod.number().int().min(1)
+})
+
+
+/**
+ * @summary Record a payment received against a subscription charge
+ */
+export const RecordAdminFinancePaymentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const recordAdminFinancePaymentBodyAmountMax = 1000000000;
+
+export const recordAdminFinancePaymentBodyReferenceMax = 120;
+
+export const recordAdminFinancePaymentBodyPaidOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const recordAdminFinancePaymentBodyReceivedByMax = 160;
+
+export const recordAdminFinancePaymentBodyNotesMax = 1000;
+
+
+
+export const RecordAdminFinancePaymentBody = zod.object({
+  "amount": zod.number().int().min(1).max(recordAdminFinancePaymentBodyAmountMax),
+  "method": zod.enum(['mobile-money', 'bank-transfer', 'cash']),
+  "reference": zod.string().max(recordAdminFinancePaymentBodyReferenceMax).nullish(),
+  "paidOn": zod.string().regex(recordAdminFinancePaymentBodyPaidOnRegExp),
+  "receivedBy": zod.string().max(recordAdminFinancePaymentBodyReceivedByMax).nullish(),
+  "notes": zod.string().max(recordAdminFinancePaymentBodyNotesMax).nullish()
+})
+
+export const recordAdminFinancePaymentResponseAmountDueMin = 0;
+
+export const recordAdminFinancePaymentResponseAmountPaidMin = 0;
+
+export const recordAdminFinancePaymentResponseAmountWaivedMin = 0;
+
+export const recordAdminFinancePaymentResponseReminderCountMin = 0;
+
+
+
+export const RecordAdminFinancePaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "periodId": zod.string().uuid(),
+  "periodYear": zod.number().int().nullish(),
+  "applicationId": zod.string().uuid(),
+  "membershipNumber": zod.string().nullish(),
+  "memberName": zod.string(),
+  "houseNumber": zod.string().nullish(),
+  "streetOrZone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amountDue": zod.number().int().min(recordAdminFinancePaymentResponseAmountDueMin),
+  "amountPaid": zod.number().int().min(recordAdminFinancePaymentResponseAmountPaidMin),
+  "amountWaived": zod.number().int().min(recordAdminFinancePaymentResponseAmountWaivedMin),
+  "balance": zod.number().int(),
+  "status": zod.enum(['outstanding', 'part-paid', 'paid', 'waived']),
+  "dueDate": zod.string().nullish(),
+  "waivedReason": zod.string().nullish(),
+  "reminderCount": zod.number().int().min(recordAdminFinancePaymentResponseReminderCountMin).optional(),
+  "lastReminderAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Waive all or part of a subscription charge
+ */
+export const WaiveAdminFinanceChargeParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const waiveAdminFinanceChargeBodyAmountMax = 1000000000;
+
+export const waiveAdminFinanceChargeBodyReasonMin = 3;
+export const waiveAdminFinanceChargeBodyReasonMax = 1000;
+
+
+
+export const WaiveAdminFinanceChargeBody = zod.object({
+  "amount": zod.number().int().min(1).max(waiveAdminFinanceChargeBodyAmountMax),
+  "reason": zod.string().min(waiveAdminFinanceChargeBodyReasonMin).max(waiveAdminFinanceChargeBodyReasonMax)
+})
+
+export const waiveAdminFinanceChargeResponseAmountDueMin = 0;
+
+export const waiveAdminFinanceChargeResponseAmountPaidMin = 0;
+
+export const waiveAdminFinanceChargeResponseAmountWaivedMin = 0;
+
+export const waiveAdminFinanceChargeResponseReminderCountMin = 0;
+
+
+
+export const WaiveAdminFinanceChargeResponse = zod.object({
+  "id": zod.string().uuid(),
+  "periodId": zod.string().uuid(),
+  "periodYear": zod.number().int().nullish(),
+  "applicationId": zod.string().uuid(),
+  "membershipNumber": zod.string().nullish(),
+  "memberName": zod.string(),
+  "houseNumber": zod.string().nullish(),
+  "streetOrZone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amountDue": zod.number().int().min(waiveAdminFinanceChargeResponseAmountDueMin),
+  "amountPaid": zod.number().int().min(waiveAdminFinanceChargeResponseAmountPaidMin),
+  "amountWaived": zod.number().int().min(waiveAdminFinanceChargeResponseAmountWaivedMin),
+  "balance": zod.number().int(),
+  "status": zod.enum(['outstanding', 'part-paid', 'paid', 'waived']),
+  "dueDate": zod.string().nullish(),
+  "waivedReason": zod.string().nullish(),
+  "reminderCount": zod.number().int().min(waiveAdminFinanceChargeResponseReminderCountMin).optional(),
+  "lastReminderAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Page through recorded association expenditure
+ */
+export const getAdminFinanceExpensesQuerySearchMax = 120;
+
+export const getAdminFinanceExpensesQueryPageDefault = 1;
+
+export const getAdminFinanceExpensesQueryPageSizeDefault = 25;
+export const getAdminFinanceExpensesQueryPageSizeMax = 100;
+
+
+
+export const GetAdminFinanceExpensesQueryParams = zod.object({
+  "periodId": zod.coerce.string().uuid().optional(),
+  "category": zod.enum(['printing-stationery', 'venue-hire', 'utilities', 'security', 'maintenance', 'welfare', 'bank-charges', 'transport', 'other']).optional(),
+  "search": zod.coerce.string().max(getAdminFinanceExpensesQuerySearchMax).optional(),
+  "page": zod.coerce.number().int().min(1).default(getAdminFinanceExpensesQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(getAdminFinanceExpensesQueryPageSizeMax).default(getAdminFinanceExpensesQueryPageSizeDefault)
+})
+
+export const getAdminFinanceExpensesResponseItemsItemAmountMin = 0;
+
+export const getAdminFinanceExpensesResponseTotalMin = 0;
+
+
+
+
+
+export const GetAdminFinanceExpensesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "periodId": zod.string().uuid().nullish(),
+  "periodYear": zod.number().int().nullish(),
+  "category": zod.enum(['printing-stationery', 'venue-hire', 'utilities', 'security', 'maintenance', 'welfare', 'bank-charges', 'transport', 'other']),
+  "description": zod.string(),
+  "amount": zod.number().int().min(getAdminFinanceExpensesResponseItemsItemAmountMin),
+  "paidOn": zod.string(),
+  "payee": zod.string().nullish(),
+  "method": zod.enum(['mobile-money', 'bank-transfer', 'cash']).nullish(),
+  "reference": zod.string().nullish(),
+  "receiptReference": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional()
+})),
+  "total": zod.number().int().min(getAdminFinanceExpensesResponseTotalMin),
+  "page": zod.number().int().min(1),
+  "pageSize": zod.number().int().min(1)
+})
+
+
+/**
+ * @summary Record money paid out by the association
+ */
+export const createAdminFinanceExpenseBodyDescriptionMin = 2;
+export const createAdminFinanceExpenseBodyDescriptionMax = 300;
+
+export const createAdminFinanceExpenseBodyAmountMax = 1000000000;
+
+export const createAdminFinanceExpenseBodyPaidOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createAdminFinanceExpenseBodyPayeeMax = 200;
+
+export const createAdminFinanceExpenseBodyReferenceMax = 120;
+
+export const createAdminFinanceExpenseBodyReceiptReferenceMax = 120;
+
+export const createAdminFinanceExpenseBodyNotesMax = 1000;
+
+
+
+export const CreateAdminFinanceExpenseBody = zod.object({
+  "periodId": zod.string().uuid().nullish(),
+  "category": zod.enum(['printing-stationery', 'venue-hire', 'utilities', 'security', 'maintenance', 'welfare', 'bank-charges', 'transport', 'other']),
+  "description": zod.string().min(createAdminFinanceExpenseBodyDescriptionMin).max(createAdminFinanceExpenseBodyDescriptionMax),
+  "amount": zod.number().int().min(1).max(createAdminFinanceExpenseBodyAmountMax),
+  "paidOn": zod.string().regex(createAdminFinanceExpenseBodyPaidOnRegExp),
+  "payee": zod.string().max(createAdminFinanceExpenseBodyPayeeMax).nullish(),
+  "method": zod.enum(['mobile-money', 'bank-transfer', 'cash']).nullish(),
+  "reference": zod.string().max(createAdminFinanceExpenseBodyReferenceMax).nullish(),
+  "receiptReference": zod.string().max(createAdminFinanceExpenseBodyReceiptReferenceMax).nullish(),
+  "notes": zod.string().max(createAdminFinanceExpenseBodyNotesMax).nullish()
+})
+
+export const createAdminFinanceExpenseResponseAmountMin = 0;
+
+
+
+export const CreateAdminFinanceExpenseResponse = zod.object({
+  "id": zod.string().uuid(),
+  "periodId": zod.string().uuid().nullish(),
+  "periodYear": zod.number().int().nullish(),
+  "category": zod.enum(['printing-stationery', 'venue-hire', 'utilities', 'security', 'maintenance', 'welfare', 'bank-charges', 'transport', 'other']),
+  "description": zod.string(),
+  "amount": zod.number().int().min(createAdminFinanceExpenseResponseAmountMin),
+  "paidOn": zod.string(),
+  "payee": zod.string().nullish(),
+  "method": zod.enum(['mobile-money', 'bank-transfer', 'cash']).nullish(),
+  "reference": zod.string().nullish(),
+  "receiptReference": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Remove an expense recorded in error
+ */
+export const DeleteAdminFinanceExpenseParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminFinanceExpenseResponse = zod.object({
+  "id": zod.string().uuid(),
+  "deleted": zod.boolean()
+})
+
+
+/**
+ * @summary The signed-in member's own subscription charge and payments
+ */
+export const getMySubscriptionResponseChargesItemAmountDueMin = 0;
+
+export const getMySubscriptionResponseChargesItemAmountPaidMin = 0;
+
+export const getMySubscriptionResponseChargesItemAmountWaivedMin = 0;
+
+export const getMySubscriptionResponseChargesItemPaymentsItemAmountMin = 0;
+
+
+
+export const GetMySubscriptionResponse = zod.object({
+  "currency": zod.string(),
+  "charges": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "year": zod.number().int(),
+  "membershipNumber": zod.string().nullish(),
+  "amountDue": zod.number().int().min(getMySubscriptionResponseChargesItemAmountDueMin),
+  "amountPaid": zod.number().int().min(getMySubscriptionResponseChargesItemAmountPaidMin),
+  "amountWaived": zod.number().int().min(getMySubscriptionResponseChargesItemAmountWaivedMin),
+  "balance": zod.number().int(),
+  "status": zod.enum(['outstanding', 'part-paid', 'paid', 'waived']),
+  "dueDate": zod.string().nullish(),
+  "payments": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "amount": zod.number().int().min(getMySubscriptionResponseChargesItemPaymentsItemAmountMin),
+  "method": zod.enum(['mobile-money', 'bank-transfer', 'cash']),
+  "reference": zod.string().nullish(),
+  "paidOn": zod.string()
+}))
+}))
+})
+
+

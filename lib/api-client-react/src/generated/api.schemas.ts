@@ -965,6 +965,443 @@ export interface RoleRevokeInput {
   role: AssociationRole;
 }
 
+export type FinancePeriodStatus = typeof FinancePeriodStatus[keyof typeof FinancePeriodStatus];
+
+
+export const FinancePeriodStatus = {
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface FinancePeriod {
+  id: string;
+  year: number;
+  currency: string;
+  /** @nullable */
+  label?: string | null;
+  /** @minimum 0 */
+  amountTierLow: number;
+  /** @minimum 0 */
+  amountTierStandard: number;
+  /** @minimum 0 */
+  amountTierHigh: number;
+  status: FinancePeriodStatus;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+  /** @nullable */
+  chargeCount?: number | null;
+  /** @nullable */
+  amountBilled?: number | null;
+  /** @nullable */
+  amountCollected?: number | null;
+}
+
+export interface FinancePeriodInput {
+  /**
+     * @minimum 2000
+     * @maximum 2200
+     */
+  year: number;
+  /**
+     * @maxLength 8
+     * @nullable
+     */
+  currency?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  label?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  amountTierLow: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  amountTierStandard: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000000
+     */
+  amountTierHigh: number;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export interface FinanceChargeGeneration {
+  periodId: string;
+  /** @minimum 0 */
+  created: number;
+  /** @minimum 0 */
+  alreadyCharged: number;
+  /** @minimum 0 */
+  skipped: number;
+  /** @minimum 0 */
+  amountBilled: number;
+}
+
+export type AdminFinanceChargeStatus = typeof AdminFinanceChargeStatus[keyof typeof AdminFinanceChargeStatus];
+
+
+export const AdminFinanceChargeStatus = {
+  outstanding: 'outstanding',
+  'part-paid': 'part-paid',
+  paid: 'paid',
+  waived: 'waived',
+} as const;
+
+export interface AdminFinanceCharge {
+  id: string;
+  periodId: string;
+  /** @nullable */
+  periodYear?: number | null;
+  applicationId: string;
+  /** @nullable */
+  membershipNumber?: string | null;
+  memberName: string;
+  /** @nullable */
+  houseNumber?: string | null;
+  /** @nullable */
+  streetOrZone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @minimum 0 */
+  amountDue: number;
+  /** @minimum 0 */
+  amountPaid: number;
+  /** @minimum 0 */
+  amountWaived: number;
+  balance: number;
+  status: AdminFinanceChargeStatus;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  waivedReason?: string | null;
+  /** @minimum 0 */
+  reminderCount?: number;
+  /** @nullable */
+  lastReminderAt?: string | null;
+}
+
+export interface AdminFinanceChargePage {
+  items: AdminFinanceCharge[];
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 1 */
+  page: number;
+  /** @minimum 1 */
+  pageSize: number;
+}
+
+export type FinancePaymentInputMethod = typeof FinancePaymentInputMethod[keyof typeof FinancePaymentInputMethod];
+
+
+export const FinancePaymentInputMethod = {
+  'mobile-money': 'mobile-money',
+  'bank-transfer': 'bank-transfer',
+  cash: 'cash',
+} as const;
+
+export interface FinancePaymentInput {
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  amount: number;
+  method: FinancePaymentInputMethod;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  reference?: string | null;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  paidOn: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  receivedBy?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export interface FinanceWaiverInput {
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  amount: number;
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export type AdminFinanceExpenseCategory = typeof AdminFinanceExpenseCategory[keyof typeof AdminFinanceExpenseCategory];
+
+
+export const AdminFinanceExpenseCategory = {
+  'printing-stationery': 'printing-stationery',
+  'venue-hire': 'venue-hire',
+  utilities: 'utilities',
+  security: 'security',
+  maintenance: 'maintenance',
+  welfare: 'welfare',
+  'bank-charges': 'bank-charges',
+  transport: 'transport',
+  other: 'other',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminFinanceExpenseMethod = typeof AdminFinanceExpenseMethod[keyof typeof AdminFinanceExpenseMethod] | null;
+
+
+export const AdminFinanceExpenseMethod = {
+  'mobile-money': 'mobile-money',
+  'bank-transfer': 'bank-transfer',
+  cash: 'cash',
+} as const;
+
+export interface AdminFinanceExpense {
+  id: string;
+  /** @nullable */
+  periodId?: string | null;
+  /** @nullable */
+  periodYear?: number | null;
+  category: AdminFinanceExpenseCategory;
+  description: string;
+  /** @minimum 0 */
+  amount: number;
+  paidOn: string;
+  /** @nullable */
+  payee?: string | null;
+  /** @nullable */
+  method?: AdminFinanceExpenseMethod;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  receiptReference?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export type FinanceExpenseInputCategory = typeof FinanceExpenseInputCategory[keyof typeof FinanceExpenseInputCategory];
+
+
+export const FinanceExpenseInputCategory = {
+  'printing-stationery': 'printing-stationery',
+  'venue-hire': 'venue-hire',
+  utilities: 'utilities',
+  security: 'security',
+  maintenance: 'maintenance',
+  welfare: 'welfare',
+  'bank-charges': 'bank-charges',
+  transport: 'transport',
+  other: 'other',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FinanceExpenseInputMethod = typeof FinanceExpenseInputMethod[keyof typeof FinanceExpenseInputMethod] | null;
+
+
+export const FinanceExpenseInputMethod = {
+  'mobile-money': 'mobile-money',
+  'bank-transfer': 'bank-transfer',
+  cash: 'cash',
+} as const;
+
+export interface FinanceExpenseInput {
+  /** @nullable */
+  periodId?: string | null;
+  category: FinanceExpenseInputCategory;
+  /**
+     * @minLength 2
+     * @maxLength 300
+     */
+  description: string;
+  /**
+     * @minimum 1
+     * @maximum 1000000000
+     */
+  amount: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  paidOn: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  payee?: string | null;
+  /** @nullable */
+  method?: FinanceExpenseInputMethod;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  reference?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  receiptReference?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export interface AdminFinanceExpensePage {
+  items: AdminFinanceExpense[];
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 1 */
+  page: number;
+  /** @minimum 1 */
+  pageSize: number;
+}
+
+export interface FinanceExpenseDeletion {
+  id: string;
+  deleted: boolean;
+}
+
+export interface FinanceCategoryTotal {
+  category: string;
+  /** @minimum 0 */
+  amount: number;
+  /** @minimum 0 */
+  entries: number;
+}
+
+export type AdminFinancePaymentMethod = typeof AdminFinancePaymentMethod[keyof typeof AdminFinancePaymentMethod];
+
+
+export const AdminFinancePaymentMethod = {
+  'mobile-money': 'mobile-money',
+  'bank-transfer': 'bank-transfer',
+  cash: 'cash',
+} as const;
+
+export interface AdminFinancePayment {
+  id: string;
+  chargeId: string;
+  /** @nullable */
+  memberName?: string | null;
+  /** @nullable */
+  membershipNumber?: string | null;
+  /** @minimum 0 */
+  amount: number;
+  method: AdminFinancePaymentMethod;
+  /** @nullable */
+  reference?: string | null;
+  paidOn: string;
+  /** @nullable */
+  receivedBy?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface AdminFinanceOverview {
+  /** @nullable */
+  period: FinancePeriod | null;
+  /** @minimum 0 */
+  membersCharged: number;
+  /** @minimum 0 */
+  fullyPaid: number;
+  /** @minimum 0 */
+  partPaid: number;
+  /** @minimum 0 */
+  outstanding: number;
+  /** @minimum 0 */
+  waived: number;
+  /** @minimum 0 */
+  amountBilled: number;
+  /** @minimum 0 */
+  amountCollected: number;
+  /** @minimum 0 */
+  amountOutstanding: number;
+  /** @minimum 0 */
+  amountWaived: number;
+  /** @minimum 0 */
+  amountSpent: number;
+  /** @minimum 0 */
+  creditBalance: number;
+  balance: number;
+  byCategory: FinanceCategoryTotal[];
+  recentPayments: AdminFinancePayment[];
+}
+
+export type MySubscriptionChargeStatus = typeof MySubscriptionChargeStatus[keyof typeof MySubscriptionChargeStatus];
+
+
+export const MySubscriptionChargeStatus = {
+  outstanding: 'outstanding',
+  'part-paid': 'part-paid',
+  paid: 'paid',
+  waived: 'waived',
+} as const;
+
+export type MySubscriptionPaymentMethod = typeof MySubscriptionPaymentMethod[keyof typeof MySubscriptionPaymentMethod];
+
+
+export const MySubscriptionPaymentMethod = {
+  'mobile-money': 'mobile-money',
+  'bank-transfer': 'bank-transfer',
+  cash: 'cash',
+} as const;
+
+export interface MySubscriptionPayment {
+  id: string;
+  /** @minimum 0 */
+  amount: number;
+  method: MySubscriptionPaymentMethod;
+  /** @nullable */
+  reference?: string | null;
+  paidOn: string;
+}
+
+export interface MySubscriptionCharge {
+  id: string;
+  year: number;
+  /** @nullable */
+  membershipNumber?: string | null;
+  /** @minimum 0 */
+  amountDue: number;
+  /** @minimum 0 */
+  amountPaid: number;
+  /** @minimum 0 */
+  amountWaived: number;
+  balance: number;
+  status: MySubscriptionChargeStatus;
+  /** @nullable */
+  dueDate?: string | null;
+  payments: MySubscriptionPayment[];
+}
+
+export interface MySubscription {
+  currency: string;
+  charges: MySubscriptionCharge[];
+}
+
 export type GetAdminApplicationsParams = {
 /**
  * @minimum 1
@@ -1017,5 +1454,66 @@ export const GetAdminPetitionSubmissionsStatus = {
   disputed: 'disputed',
   rejected: 'rejected',
   withdrawn: 'withdrawn',
+} as const;
+
+export type GetAdminFinanceChargesParams = {
+periodId?: string;
+status?: GetAdminFinanceChargesStatus;
+/**
+ * @maxLength 120
+ */
+search?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type GetAdminFinanceChargesStatus = typeof GetAdminFinanceChargesStatus[keyof typeof GetAdminFinanceChargesStatus];
+
+
+export const GetAdminFinanceChargesStatus = {
+  outstanding: 'outstanding',
+  'part-paid': 'part-paid',
+  paid: 'paid',
+  waived: 'waived',
+} as const;
+
+export type GetAdminFinanceExpensesParams = {
+periodId?: string;
+category?: GetAdminFinanceExpensesCategory;
+/**
+ * @maxLength 120
+ */
+search?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type GetAdminFinanceExpensesCategory = typeof GetAdminFinanceExpensesCategory[keyof typeof GetAdminFinanceExpensesCategory];
+
+
+export const GetAdminFinanceExpensesCategory = {
+  'printing-stationery': 'printing-stationery',
+  'venue-hire': 'venue-hire',
+  utilities: 'utilities',
+  security: 'security',
+  maintenance: 'maintenance',
+  welfare: 'welfare',
+  'bank-charges': 'bank-charges',
+  transport: 'transport',
+  other: 'other',
 } as const;
 

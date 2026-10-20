@@ -567,6 +567,315 @@ paths:
           description: Authentication required
         "403":
           description: Association administrator role required
+  /admin/finance/overview:
+    get:
+      operationId: getAdminFinanceOverview
+      tags: [resident]
+      summary: Subscription and expenditure totals for the active period
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Finance totals for the active subscription period
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceOverview"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+  /admin/finance/periods:
+    get:
+      operationId: getAdminFinancePeriods
+      tags: [resident]
+      summary: List subscription periods and their tier amounts
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: All configured subscription periods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FinancePeriod"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+    post:
+      operationId: createAdminFinancePeriod
+      tags: [resident]
+      summary: Create a subscription period with its tier amounts
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancePeriodInput"
+      responses:
+        "200":
+          description: The created subscription period
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancePeriod"
+        "400":
+          description: Invalid year, amounts or currency
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+        "409":
+          description: A period already exists for that year
+  /admin/finance/periods/{id}/generate:
+    post:
+      operationId: generateAdminFinanceCharges
+      tags: [resident]
+      summary: Raise subscription charges for every verified member
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: How many charges were raised, skipped or raised already
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceChargeGeneration"
+        "400":
+          description: The period is closed
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+        "404":
+          description: Subscription period not found
+  /admin/finance/charges:
+    get:
+      operationId: getAdminFinanceCharges
+      tags: [resident]
+      summary: Page through member subscription charges
+      security:
+        - clerkSession: []
+      parameters:
+        - name: periodId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [outstanding, part-paid, paid, waived]
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 120 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        "200":
+          description: A paginated list of subscription charges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceChargePage"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+  /admin/finance/charges/{id}/payments:
+    post:
+      operationId: recordAdminFinancePayment
+      tags: [resident]
+      summary: Record a payment received against a subscription charge
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancePaymentInput"
+      responses:
+        "200":
+          description: The charge with its updated balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceCharge"
+        "400":
+          description: Invalid amount, method or date
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+        "404":
+          description: Charge not found
+  /admin/finance/charges/{id}/waive:
+    post:
+      operationId: waiveAdminFinanceCharge
+      tags: [resident]
+      summary: Waive all or part of a subscription charge
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinanceWaiverInput"
+      responses:
+        "200":
+          description: The charge with its updated balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceCharge"
+        "400":
+          description: Invalid amount, or the waiver exceeds the amount owed
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+        "404":
+          description: Charge not found
+  /admin/finance/expenses:
+    get:
+      operationId: getAdminFinanceExpenses
+      tags: [resident]
+      summary: Page through recorded association expenditure
+      security:
+        - clerkSession: []
+      parameters:
+        - name: periodId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum:
+              [
+                printing-stationery,
+                venue-hire,
+                utilities,
+                security,
+                maintenance,
+                welfare,
+                bank-charges,
+                transport,
+                other,
+              ]
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 120 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        "200":
+          description: A paginated list of expenses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceExpensePage"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+    post:
+      operationId: createAdminFinanceExpense
+      tags: [resident]
+      summary: Record money paid out by the association
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinanceExpenseInput"
+      responses:
+        "200":
+          description: The recorded expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceExpense"
+        "400":
+          description: Invalid category, amount, date or description
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+        "404":
+          description: Subscription period not found
+  /admin/finance/expenses/{id}:
+    delete:
+      operationId: deleteAdminFinanceExpense
+      tags: [resident]
+      summary: Remove an expense recorded in error
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Confirmation that the expense was removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinanceExpenseDeletion"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
+        "404":
+          description: Expense not found
+  /resident/subscription:
+    get:
+      operationId: getMySubscription
+      tags: [resident]
+      summary: The signed-in member's own subscription charge and payments
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: The member's subscription status, or an empty list when none is raised
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MySubscription"
+        "401":
+          description: Authentication required
 components:
   securitySchemes:
     clerkSession:
@@ -1212,4 +1521,290 @@ components:
         userId: { type: string, minLength: 1, maxLength: 200 }
         role:
           $ref: "#/components/schemas/AssociationRole"
+    FinancePeriod:
+      type: object
+      required:
+        - id
+        - year
+        - currency
+        - amountTierLow
+        - amountTierStandard
+        - amountTierHigh
+        - status
+      properties:
+        id: { type: string, format: uuid }
+        year: { type: integer }
+        currency: { type: string }
+        label: { type: ["string", "null"] }
+        amountTierLow: { type: integer, minimum: 0 }
+        amountTierStandard: { type: integer, minimum: 0 }
+        amountTierHigh: { type: integer, minimum: 0 }
+        status:
+          type: string
+          enum: [open, closed]
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        # Convenience totals, present on the list endpoint.
+        chargeCount: { type: ["integer", "null"] }
+        amountBilled: { type: ["integer", "null"] }
+        amountCollected: { type: ["integer", "null"] }
+    FinancePeriodInput:
+      type: object
+      required: [year, amountTierLow, amountTierStandard, amountTierHigh]
+      properties:
+        year: { type: integer, minimum: 2000, maximum: 2200 }
+        currency: { type: ["string", "null"], maxLength: 8 }
+        label: { type: ["string", "null"], maxLength: 120 }
+        amountTierLow: { type: integer, minimum: 0, maximum: 1000000000 }
+        amountTierStandard: { type: integer, minimum: 0, maximum: 1000000000 }
+        amountTierHigh: { type: integer, minimum: 0, maximum: 1000000000 }
+        notes: { type: ["string", "null"], maxLength: 1000 }
+    FinanceChargeGeneration:
+      type: object
+      required: [periodId, created, alreadyCharged, skipped, amountBilled]
+      properties:
+        periodId: { type: string, format: uuid }
+        created: { type: integer, minimum: 0 }
+        alreadyCharged: { type: integer, minimum: 0 }
+        skipped: { type: integer, minimum: 0 }
+        amountBilled: { type: integer, minimum: 0 }
+    AdminFinanceCharge:
+      type: object
+      required: [id, periodId, applicationId, memberName, amountDue, amountPaid, amountWaived, balance, status]
+      properties:
+        id: { type: string, format: uuid }
+        periodId: { type: string, format: uuid }
+        periodYear: { type: ["integer", "null"] }
+        applicationId: { type: string, format: uuid }
+        membershipNumber: { type: ["string", "null"] }
+        memberName: { type: string }
+        houseNumber: { type: ["string", "null"] }
+        streetOrZone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        amountDue: { type: integer, minimum: 0 }
+        amountPaid: { type: integer, minimum: 0 }
+        amountWaived: { type: integer, minimum: 0 }
+        balance: { type: integer }
+        status:
+          type: string
+          enum: [outstanding, part-paid, paid, waived]
+        dueDate: { type: ["string", "null"] }
+        waivedReason: { type: ["string", "null"] }
+        reminderCount: { type: integer, minimum: 0 }
+        lastReminderAt: { type: ["string", "null"], format: date-time }
+    AdminFinanceChargePage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminFinanceCharge"
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+    FinancePaymentInput:
+      type: object
+      required: [amount, method, paidOn]
+      properties:
+        amount: { type: integer, minimum: 1, maximum: 1000000000 }
+        method:
+          type: string
+          enum: [mobile-money, bank-transfer, cash]
+        reference: { type: ["string", "null"], maxLength: 120 }
+        paidOn: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        receivedBy: { type: ["string", "null"], maxLength: 160 }
+        notes: { type: ["string", "null"], maxLength: 1000 }
+    FinanceWaiverInput:
+      type: object
+      required: [amount, reason]
+      properties:
+        amount: { type: integer, minimum: 1, maximum: 1000000000 }
+        reason: { type: string, minLength: 3, maxLength: 1000 }
+    AdminFinanceExpense:
+      type: object
+      required: [id, category, description, amount, paidOn]
+      properties:
+        id: { type: string, format: uuid }
+        periodId: { type: ["string", "null"], format: uuid }
+        periodYear: { type: ["integer", "null"] }
+        category:
+          type: string
+          enum:
+            [
+              printing-stationery,
+              venue-hire,
+              utilities,
+              security,
+              maintenance,
+              welfare,
+              bank-charges,
+              transport,
+              other,
+            ]
+        description: { type: string }
+        amount: { type: integer, minimum: 0 }
+        paidOn: { type: string }
+        payee: { type: ["string", "null"] }
+        method:
+          type: ["string", "null"]
+          enum: [mobile-money, bank-transfer, cash]
+        reference: { type: ["string", "null"] }
+        receiptReference: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    FinanceExpenseInput:
+      type: object
+      required: [category, description, amount, paidOn]
+      properties:
+        periodId: { type: ["string", "null"], format: uuid }
+        category:
+          type: string
+          enum:
+            [
+              printing-stationery,
+              venue-hire,
+              utilities,
+              security,
+              maintenance,
+              welfare,
+              bank-charges,
+              transport,
+              other,
+            ]
+        description: { type: string, minLength: 2, maxLength: 300 }
+        amount: { type: integer, minimum: 1, maximum: 1000000000 }
+        paidOn: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        payee: { type: ["string", "null"], maxLength: 200 }
+        method: { type: ["string", "null"], enum: [mobile-money, bank-transfer, cash] }
+        reference: { type: ["string", "null"], maxLength: 120 }
+        receiptReference: { type: ["string", "null"], maxLength: 120 }
+        notes: { type: ["string", "null"], maxLength: 1000 }
+    AdminFinanceExpensePage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminFinanceExpense"
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1 }
+    FinanceExpenseDeletion:
+      type: object
+      required: [id, deleted]
+      properties:
+        id: { type: string, format: uuid }
+        deleted: { type: boolean }
+    AdminFinanceOverview:
+      type: object
+      required:
+        - period
+        - membersCharged
+        - fullyPaid
+        - partPaid
+        - outstanding
+        - waived
+        - amountBilled
+        - amountCollected
+        - amountOutstanding
+        - amountWaived
+        - amountSpent
+        - creditBalance
+        - balance
+        - byCategory
+        - recentPayments
+      properties:
+        period:
+          type: ["object", "null"]
+          $ref: "#/components/schemas/FinancePeriod"
+        membersCharged: { type: integer, minimum: 0 }
+        fullyPaid: { type: integer, minimum: 0 }
+        partPaid: { type: integer, minimum: 0 }
+        outstanding: { type: integer, minimum: 0 }
+        waived: { type: integer, minimum: 0 }
+        amountBilled: { type: integer, minimum: 0 }
+        amountCollected: { type: integer, minimum: 0 }
+        amountOutstanding: { type: integer, minimum: 0 }
+        amountWaived: { type: integer, minimum: 0 }
+        amountSpent: { type: integer, minimum: 0 }
+        # Money received beyond what has been billed, so collected can exceed
+        # billed and the figures still add up:
+        # billed = collected + waived + outstanding - creditBalance
+        creditBalance: { type: integer, minimum: 0 }
+        balance: { type: integer }
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinanceCategoryTotal"
+        recentPayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminFinancePayment"
+    FinanceCategoryTotal:
+      type: object
+      required: [category, amount, entries]
+      properties:
+        category: { type: string }
+        amount: { type: integer, minimum: 0 }
+        entries: { type: integer, minimum: 0 }
+    AdminFinancePayment:
+      type: object
+      required: [id, chargeId, amount, method, paidOn]
+      properties:
+        id: { type: string, format: uuid }
+        chargeId: { type: string, format: uuid }
+        memberName: { type: ["string", "null"] }
+        membershipNumber: { type: ["string", "null"] }
+        amount: { type: integer, minimum: 0 }
+        method:
+          type: string
+          enum: [mobile-money, bank-transfer, cash]
+        reference: { type: ["string", "null"] }
+        paidOn: { type: string }
+        receivedBy: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    MySubscription:
+      type: object
+      required: [currency, charges]
+      properties:
+        currency: { type: string }
+        # Empty when no charge has been raised for this account yet.
+        charges:
+          type: array
+          items:
+            $ref: "#/components/schemas/MySubscriptionCharge"
+    MySubscriptionCharge:
+      type: object
+      required: [id, year, amountDue, amountPaid, amountWaived, balance, status, payments]
+      properties:
+        id: { type: string, format: uuid }
+        year: { type: integer }
+        membershipNumber: { type: ["string", "null"] }
+        amountDue: { type: integer, minimum: 0 }
+        amountPaid: { type: integer, minimum: 0 }
+        amountWaived: { type: integer, minimum: 0 }
+        balance: { type: integer }
+        status:
+          type: string
+          enum: [outstanding, part-paid, paid, waived]
+        dueDate: { type: ["string", "null"] }
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/MySubscriptionPayment"
+    MySubscriptionPayment:
+      type: object
+      required: [id, amount, method, paidOn]
+      properties:
+        id: { type: string, format: uuid }
+        amount: { type: integer, minimum: 0 }
+        method:
+          type: string
+          enum: [mobile-money, bank-transfer, cash]
+        reference: { type: ["string", "null"] }
+        paidOn: { type: string }
 

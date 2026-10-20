@@ -16,6 +16,10 @@ import {
   db,
   announcementsTable,
   auditLogsTable,
+  financeChargesTable,
+  financeExpensesTable,
+  financePaymentsTable,
+  financePeriodsTable,
   governanceDocumentsTable,
   membershipApplicationsTable,
   petitionConfigurationsTable,
@@ -30,6 +34,7 @@ import {
   hasRole,
   adminRoles,
   reviewerRoles,
+  financeRoles,
 } from "../lib/auth";
 import { pushToGoogleSheets } from "../lib/google-sheets";
 import { isUniqueViolation } from "../lib/pg-errors";
@@ -72,6 +77,27 @@ import {
   GrantAdminRoleResponse,
   RevokeAdminRoleBody,
   RevokeAdminRoleResponse,
+  GetAdminFinanceOverviewResponse,
+  GetAdminFinancePeriodsResponse,
+  CreateAdminFinancePeriodBody,
+  CreateAdminFinancePeriodResponse,
+  GenerateAdminFinanceChargesParams,
+  GenerateAdminFinanceChargesResponse,
+  GetAdminFinanceChargesQueryParams,
+  GetAdminFinanceChargesResponse,
+  RecordAdminFinancePaymentParams,
+  RecordAdminFinancePaymentBody,
+  RecordAdminFinancePaymentResponse,
+  WaiveAdminFinanceChargeParams,
+  WaiveAdminFinanceChargeBody,
+  WaiveAdminFinanceChargeResponse,
+  GetAdminFinanceExpensesQueryParams,
+  GetAdminFinanceExpensesResponse,
+  CreateAdminFinanceExpenseBody,
+  CreateAdminFinanceExpenseResponse,
+  DeleteAdminFinanceExpenseParams,
+  DeleteAdminFinanceExpenseResponse,
+  GetMySubscriptionResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -1925,6 +1951,1013 @@ router.post("/admin/roles/revoke", async (req, res): Promise<void> => {
 
   res.json(
     RevokeAdminRoleResponse.parse({ userId: targetUserId, roles }),
+  );
+});
+
+/* -------------------------------------------------------------------------- *
+ * Finance — subscriptions, payments and expenses.
+ *
+ * Money is handled in minor units (ngwee) throughout. The API speaks ngwee and
+ * the UI formats as Kwacha, so no rounding decision ever happens at the edge.
+ * -------------------------------------------------------------------------- */
+
+/** Mirror of requireAdministrator, but for the narrower finance permission. */
+async function requireFinanceUser(
+  req: Request,
+  res: Response,
+): Promise<string | null> {
+  const userId = await requireUserId(req, res);
+  if (!userId) return null;
+  const roles = await getAssociationRoles(userId);
+  if (!hasRole(roles, ...financeRoles)) {
+    res.status(403).json({
+      error: "An administrator or treasurer role is required for finance.",
+    });
+    return null;
+  }
+  return userId;
+}
+
+/**
+ * The amount a member was polled at, mapped to the period's tier amounts.
+ * A member who did not answer the poll is charged the standard tier, since
+ * some subscription is expected from every adult member.
+ */
+function tierAmountForVote(
+  vote: string | null,
+  period: {
+    amountTierLow: number;
+    amountTierStandard: number;
+    amountTierHigh: number;
+  },
+): number {
+  switch (vote) {
+    case "k50":
+      return period.amountTierLow;
+    case "k150":
+      return period.amountTierHigh;
+    default:
+      return period.amountTierStandard;
+  }
+}
+
+/**
+ * Recompute a charge's status from the money actually recorded against it.
+ * Waived is only reached once the waived amount and the paid amount together
+ * cover the amount due, so a partial waiver leaves the member still owing.
+ */
+function chargeStatus(
+  amountDue: number,
+  amountPaid: number,
+  amountWaived: number,
+): "outstanding" | "part-paid" | "paid" | "waived" {
+  const settled = amountPaid + amountWaived;
+  if (settled >= amountDue) {
+    // If nothing was paid and it is fully covered, it was a pure waiver.
+    return amountPaid === 0 && amountWaived > 0 ? "waived" : "paid";
+  }
+  if (amountPaid > 0 || amountWaived > 0) return "part-paid";
+  return "outstanding";
+}
+
+/** Shape a charge row plus its joined member details into the API response. */
+function toAdminCharge(row: {
+  charge: typeof financeChargesTable.$inferSelect;
+  periodYear: number | null;
+  houseNumber: string | null;
+  streetOrZone: string | null;
+  email: string | null;
+  phone: string | null;
+}): Record<string, unknown> {
+  const { charge } = row;
+  return {
+    id: charge.id,
+    periodId: charge.periodId,
+    periodYear: row.periodYear,
+    applicationId: charge.applicationId,
+    membershipNumber: charge.membershipNumber,
+    memberName: charge.memberName,
+    houseNumber: row.houseNumber,
+    streetOrZone: row.streetOrZone,
+    email: row.email,
+    phone: row.phone,
+    amountDue: charge.amountDue,
+    amountPaid: charge.amountPaid,
+    amountWaived: charge.amountWaived,
+    balance: Math.max(
+      0,
+      charge.amountDue - charge.amountPaid - charge.amountWaived,
+    ),
+    status: charge.status,
+    dueDate: charge.dueDate,
+    waivedReason: charge.waivedReason,
+    reminderCount: charge.reminderCount,
+    lastReminderAt: charge.lastReminderAt,
+  };
+}
+
+/** A trimmed, non-empty string, or null. Keeps empty form fields out of the DB. */
+function optionalText(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+router.get(
+  "/admin/finance/periods",
+  async (req, res): Promise<void> => {
+    if (!(await requireFinanceUser(req, res))) return;
+
+    const rows = await db
+      .select()
+      .from(financePeriodsTable)
+      .orderBy(desc(financePeriodsTable.year));
+
+    // Attach billed and collected totals so the list is useful on its own.
+    const totals = await db
+      .select({
+        periodId: financeChargesTable.periodId,
+        chargeCount: count(),
+        amountBilled: sql<number>`coalesce(sum(${financeChargesTable.amountDue}), 0)::int`,
+        amountCollected: sql<number>`coalesce(sum(${financeChargesTable.amountPaid}), 0)::int`,
+      })
+      .from(financeChargesTable)
+      .groupBy(financeChargesTable.periodId);
+
+    const byPeriod = new Map(totals.map((row) => [row.periodId, row]));
+
+    res.json(
+      GetAdminFinancePeriodsResponse.parse(
+        rows.map((row) => {
+          const total = byPeriod.get(row.id);
+          return {
+            id: row.id,
+            year: row.year,
+            currency: row.currency,
+            label: row.label,
+            amountTierLow: row.amountTierLow,
+            amountTierStandard: row.amountTierStandard,
+            amountTierHigh: row.amountTierHigh,
+            status: row.status,
+            notes: row.notes,
+            createdAt: row.createdAt,
+            chargeCount: total?.chargeCount ?? 0,
+            amountBilled: total?.amountBilled ?? 0,
+            amountCollected: total?.amountCollected ?? 0,
+          };
+        }),
+      ),
+    );
+  },
+);
+
+router.post(
+  "/admin/finance/periods",
+  async (req, res): Promise<void> => {
+    const userId = await requireFinanceUser(req, res);
+    if (!userId) return;
+
+    const parsed = CreateAdminFinancePeriodBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error:
+          "Provide a year between 2000 and 2200, and the three subscription tier amounts.",
+      });
+      return;
+    }
+    const body = parsed.data;
+
+    const existing = await db
+      .select({ id: financePeriodsTable.id })
+      .from(financePeriodsTable)
+      .where(eq(financePeriodsTable.year, body.year))
+      .limit(1);
+    if (existing.length > 0) {
+      res.status(409).json({
+        error: `A subscription period already exists for ${body.year}.`,
+      });
+      return;
+    }
+
+    const [created] = await db
+      .insert(financePeriodsTable)
+      .values({
+        year: body.year,
+        currency: optionalText(body.currency) ?? "ZMW",
+        label: optionalText(body.label),
+        amountTierLow: body.amountTierLow,
+        amountTierStandard: body.amountTierStandard,
+        amountTierHigh: body.amountTierHigh,
+        notes: optionalText(body.notes),
+        createdByUserId: userId,
+      })
+      .returning();
+
+    await db.insert(auditLogsTable).values({
+      actorUserId: userId,
+      action: "finance.period.created",
+      recordType: "finance_period",
+      recordId: created.id,
+      metadata: JSON.stringify({
+        year: created.year,
+        amountTierLow: created.amountTierLow,
+        amountTierStandard: created.amountTierStandard,
+        amountTierHigh: created.amountTierHigh,
+      }),
+    });
+
+    res.json(
+      CreateAdminFinancePeriodResponse.parse({
+        id: created.id,
+        year: created.year,
+        currency: created.currency,
+        label: created.label,
+        amountTierLow: created.amountTierLow,
+        amountTierStandard: created.amountTierStandard,
+        amountTierHigh: created.amountTierHigh,
+        status: created.status,
+        notes: created.notes,
+        createdAt: created.createdAt,
+        chargeCount: 0,
+        amountBilled: 0,
+        amountCollected: 0,
+      }),
+    );
+  },
+);
+
+router.post(
+  "/admin/finance/periods/:id/generate",
+  async (req, res): Promise<void> => {
+    const userId = await requireFinanceUser(req, res);
+    if (!userId) return;
+
+    const params = GenerateAdminFinanceChargesParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid subscription period id." });
+      return;
+    }
+
+    const [period] = await db
+      .select()
+      .from(financePeriodsTable)
+      .where(eq(financePeriodsTable.id, params.data.id))
+      .limit(1);
+    if (!period) {
+      res.status(404).json({ error: "Subscription period not found." });
+      return;
+    }
+    if (period.status === "closed") {
+      res.status(400).json({
+        error: "This period is closed. Raise charges in an open period.",
+      });
+      return;
+    }
+
+    // Only verified members are billed. Pending applications have no membership
+    // number and may still be rejected, so charging them would be premature.
+    const verified = await db
+      .select({
+        id: membershipApplicationsTable.id,
+        fullName: membershipApplicationsTable.fullName,
+        membershipNumber: membershipApplicationsTable.membershipNumber,
+        subscriptionVote: membershipApplicationsTable.subscriptionVote,
+      })
+      .from(membershipApplicationsTable)
+      .where(eq(membershipApplicationsTable.status, "verified"));
+
+    const existing = await db
+      .select({ applicationId: financeChargesTable.applicationId })
+      .from(financeChargesTable)
+      .where(eq(financeChargesTable.periodId, period.id));
+    const alreadyCharged = new Set(existing.map((row) => row.applicationId));
+
+    const toCreate = verified
+      .filter((member) => !alreadyCharged.has(member.id))
+      .map((member) => ({
+        periodId: period.id,
+        applicationId: member.id,
+        membershipNumber: member.membershipNumber,
+        memberName: member.fullName,
+        amountDue: tierAmountForVote(member.subscriptionVote, period),
+      }));
+
+    if (toCreate.length > 0) {
+      await db.insert(financeChargesTable).values(toCreate);
+    }
+
+    const amountBilled = toCreate.reduce(
+      (sum, row) => sum + row.amountDue,
+      0,
+    );
+
+    await db.insert(auditLogsTable).values({
+      actorUserId: userId,
+      action: "finance.charges.generated",
+      recordType: "finance_period",
+      recordId: period.id,
+      metadata: JSON.stringify({
+        year: period.year,
+        created: toCreate.length,
+        alreadyCharged: verified.length - toCreate.length,
+        skipped: 0,
+        amountBilled,
+      }),
+    });
+
+    res.json(
+      GenerateAdminFinanceChargesResponse.parse({
+        periodId: period.id,
+        created: toCreate.length,
+        alreadyCharged: verified.length - toCreate.length,
+        skipped: 0,
+        amountBilled,
+      }),
+    );
+  },
+);
+
+router.get(
+  "/admin/finance/charges",
+  async (req, res): Promise<void> => {
+    if (!(await requireFinanceUser(req, res))) return;
+
+    const parsed = GetAdminFinanceChargesQueryParams.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid charge filters." });
+      return;
+    }
+    const { periodId, status, search, page, pageSize } = parsed.data;
+
+    const filters = [];
+    if (periodId) filters.push(eq(financeChargesTable.periodId, periodId));
+    if (status) filters.push(eq(financeChargesTable.status, status));
+    if (search) {
+      const term = `%${search}%`;
+      filters.push(
+        or(
+          ilike(financeChargesTable.memberName, term),
+          ilike(financeChargesTable.membershipNumber, term),
+        ),
+      );
+    }
+    const where = filters.length > 0 ? and(...filters) : undefined;
+
+    const [totalRow] = await db
+      .select({ value: count() })
+      .from(financeChargesTable)
+      .where(where);
+
+    const rows = await db
+      .select({
+        charge: financeChargesTable,
+        periodYear: financePeriodsTable.year,
+        houseNumber: membershipApplicationsTable.houseNumber,
+        streetOrZone: membershipApplicationsTable.streetOrZone,
+        email: membershipApplicationsTable.email,
+        phone: membershipApplicationsTable.phone,
+      })
+      .from(financeChargesTable)
+      .leftJoin(
+        financePeriodsTable,
+        eq(financePeriodsTable.id, financeChargesTable.periodId),
+      )
+      .leftJoin(
+        membershipApplicationsTable,
+        eq(membershipApplicationsTable.id, financeChargesTable.applicationId),
+      )
+      .where(where)
+      .orderBy(
+        desc(financeChargesTable.updatedAt),
+        financeChargesTable.memberName,
+      )
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    res.json(
+      GetAdminFinanceChargesResponse.parse({
+        items: rows.map(toAdminCharge),
+        total: totalRow?.value ?? 0,
+        page,
+        pageSize,
+      }),
+    );
+  },
+);
+
+router.post(
+  "/admin/finance/charges/:id/payments",
+  async (req, res): Promise<void> => {
+    const userId = await requireFinanceUser(req, res);
+    if (!userId) return;
+
+    const params = RecordAdminFinancePaymentParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid charge id." });
+      return;
+    }
+    const parsed = RecordAdminFinancePaymentBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error:
+          "Provide a positive amount in ngwee, a payment method, and a date as YYYY-MM-DD.",
+      });
+      return;
+    }
+    const body = parsed.data;
+
+    const result = await db.transaction(async (tx) => {
+      const [charge] = await tx
+        .select()
+        .from(financeChargesTable)
+        .where(eq(financeChargesTable.id, params.data.id))
+        .limit(1);
+      if (!charge) return null;
+
+      const [payment] = await tx
+        .insert(financePaymentsTable)
+        .values({
+          chargeId: charge.id,
+          amount: body.amount,
+          method: body.method,
+          reference: optionalText(body.reference),
+          paidOn: body.paidOn,
+          receivedBy: optionalText(body.receivedBy),
+          notes: optionalText(body.notes),
+          recordedByUserId: userId,
+        })
+        .returning();
+
+      const amountPaid = charge.amountPaid + body.amount;
+      const status = chargeStatus(
+        charge.amountDue,
+        amountPaid,
+        charge.amountWaived,
+      );
+
+      const [updated] = await tx
+        .update(financeChargesTable)
+        .set({ amountPaid, status, updatedAt: new Date() })
+        .where(eq(financeChargesTable.id, charge.id))
+        .returning();
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "finance.payment.recorded",
+        recordType: "finance_charge",
+        recordId: charge.id,
+        metadata: JSON.stringify({
+          paymentId: payment.id,
+          amount: body.amount,
+          method: body.method,
+          paidOn: body.paidOn,
+          amountPaid,
+          status,
+        }),
+      });
+
+      return updated;
+    });
+
+    if (!result) {
+      res.status(404).json({ error: "Subscription charge not found." });
+      return;
+    }
+
+    const [period] = await db
+      .select({ year: financePeriodsTable.year })
+      .from(financePeriodsTable)
+      .where(eq(financePeriodsTable.id, result.periodId))
+      .limit(1);
+
+    res.json(
+      RecordAdminFinancePaymentResponse.parse(
+        toAdminCharge({
+          charge: result,
+          periodYear: period?.year ?? null,
+          houseNumber: null,
+          streetOrZone: null,
+          email: null,
+          phone: null,
+        }),
+      ),
+    );
+  },
+);
+
+router.post(
+  "/admin/finance/charges/:id/waive",
+  async (req, res): Promise<void> => {
+    const userId = await requireFinanceUser(req, res);
+    if (!userId) return;
+
+    const params = WaiveAdminFinanceChargeParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid charge id." });
+      return;
+    }
+    const parsed = WaiveAdminFinanceChargeBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: "Provide a positive waiver amount and a reason of at least 3 characters.",
+      });
+      return;
+    }
+    const body = parsed.data;
+
+    const outcome = await db.transaction(async (tx) => {
+      const [charge] = await tx
+        .select()
+        .from(financeChargesTable)
+        .where(eq(financeChargesTable.id, params.data.id))
+        .limit(1);
+      if (!charge) return { kind: "missing" as const };
+
+      const amountWaived = charge.amountWaived + body.amount;
+      if (amountWaived + charge.amountPaid > charge.amountDue) {
+        return { kind: "exceeds" as const };
+      }
+      const status = chargeStatus(
+        charge.amountDue,
+        charge.amountPaid,
+        amountWaived,
+      );
+
+      const [updated] = await tx
+        .update(financeChargesTable)
+        .set({
+          amountWaived,
+          status,
+          waivedReason: body.reason.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(financeChargesTable.id, charge.id))
+        .returning();
+
+      await tx.insert(auditLogsTable).values({
+        actorUserId: userId,
+        action: "finance.charge.waived",
+        recordType: "finance_charge",
+        recordId: charge.id,
+        metadata: JSON.stringify({
+          amount: body.amount,
+          reason: body.reason.trim(),
+          amountWaived,
+          status,
+        }),
+      });
+
+      return { kind: "ok" as const, charge: updated };
+    });
+
+    if (outcome.kind === "missing") {
+      res.status(404).json({ error: "Subscription charge not found." });
+      return;
+    }
+    if (outcome.kind === "exceeds") {
+      res.status(400).json({
+        error: "The waiver would exceed the amount owed on this charge.",
+      });
+      return;
+    }
+
+    const [period] = await db
+      .select({ year: financePeriodsTable.year })
+      .from(financePeriodsTable)
+      .where(eq(financePeriodsTable.id, outcome.charge.periodId))
+      .limit(1);
+
+    res.json(
+      WaiveAdminFinanceChargeResponse.parse(
+        toAdminCharge({
+          charge: outcome.charge,
+          periodYear: period?.year ?? null,
+          houseNumber: null,
+          streetOrZone: null,
+          email: null,
+          phone: null,
+        }),
+      ),
+    );
+  },
+);
+
+router.get(
+  "/admin/finance/expenses",
+  async (req, res): Promise<void> => {
+    if (!(await requireFinanceUser(req, res))) return;
+
+    const parsed = GetAdminFinanceExpensesQueryParams.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid expense filters." });
+      return;
+    }
+    const { periodId, category, search, page, pageSize } = parsed.data;
+
+    const filters = [];
+    if (periodId) filters.push(eq(financeExpensesTable.periodId, periodId));
+    if (category) filters.push(eq(financeExpensesTable.category, category));
+    if (search) {
+      const term = `%${search}%`;
+      filters.push(
+        or(
+          ilike(financeExpensesTable.description, term),
+          ilike(financeExpensesTable.payee, term),
+          ilike(financeExpensesTable.receiptReference, term),
+        ),
+      );
+    }
+    const where = filters.length > 0 ? and(...filters) : undefined;
+
+    const [totalRow] = await db
+      .select({ value: count() })
+      .from(financeExpensesTable)
+      .where(where);
+
+    const rows = await db
+      .select({
+        expense: financeExpensesTable,
+        periodYear: financePeriodsTable.year,
+      })
+      .from(financeExpensesTable)
+      .leftJoin(
+        financePeriodsTable,
+        eq(financePeriodsTable.id, financeExpensesTable.periodId),
+      )
+      .where(where)
+      .orderBy(desc(financeExpensesTable.paidOn), desc(financeExpensesTable.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    res.json(
+      GetAdminFinanceExpensesResponse.parse({
+        items: rows.map(({ expense, periodYear }) => ({
+          id: expense.id,
+          periodId: expense.periodId,
+          periodYear,
+          category: expense.category,
+          description: expense.description,
+          amount: expense.amount,
+          paidOn: expense.paidOn,
+          payee: expense.payee,
+          method: expense.method,
+          reference: expense.reference,
+          receiptReference: expense.receiptReference,
+          notes: expense.notes,
+          createdAt: expense.createdAt,
+        })),
+        total: totalRow?.value ?? 0,
+        page,
+        pageSize,
+      }),
+    );
+  },
+);
+
+router.post(
+  "/admin/finance/expenses",
+  async (req, res): Promise<void> => {
+    const userId = await requireFinanceUser(req, res);
+    if (!userId) return;
+
+    const parsed = CreateAdminFinanceExpenseBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error:
+          "Provide a category, a description, a positive amount in ngwee and a date as YYYY-MM-DD.",
+      });
+      return;
+    }
+    const body = parsed.data;
+
+    let periodYear: number | null = null;
+    if (body.periodId) {
+      const [period] = await db
+        .select({ year: financePeriodsTable.year })
+        .from(financePeriodsTable)
+        .where(eq(financePeriodsTable.id, body.periodId))
+        .limit(1);
+      if (!period) {
+        res.status(404).json({ error: "Subscription period not found." });
+        return;
+      }
+      periodYear = period.year;
+    }
+
+    const [created] = await db
+      .insert(financeExpensesTable)
+      .values({
+        periodId: body.periodId ?? null,
+        category: body.category,
+        description: body.description.trim(),
+        amount: body.amount,
+        paidOn: body.paidOn,
+        payee: optionalText(body.payee),
+        method: body.method ?? null,
+        reference: optionalText(body.reference),
+        receiptReference: optionalText(body.receiptReference),
+        notes: optionalText(body.notes),
+        recordedByUserId: userId,
+      })
+      .returning();
+
+    await db.insert(auditLogsTable).values({
+      actorUserId: userId,
+      action: "finance.expense.recorded",
+      recordType: "finance_expense",
+      recordId: created.id,
+      metadata: JSON.stringify({
+        category: created.category,
+        amount: created.amount,
+        paidOn: created.paidOn,
+      }),
+    });
+
+    res.json(
+      CreateAdminFinanceExpenseResponse.parse({
+        id: created.id,
+        periodId: created.periodId,
+        periodYear,
+        category: created.category,
+        description: created.description,
+        amount: created.amount,
+        paidOn: created.paidOn,
+        payee: created.payee,
+        method: created.method,
+        reference: created.reference,
+        receiptReference: created.receiptReference,
+        notes: created.notes,
+        createdAt: created.createdAt,
+      }),
+    );
+  },
+);
+
+router.delete(
+  "/admin/finance/expenses/:id",
+  async (req, res): Promise<void> => {
+    const userId = await requireFinanceUser(req, res);
+    if (!userId) return;
+
+    const params = DeleteAdminFinanceExpenseParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid expense id." });
+      return;
+    }
+
+    const [deleted] = await db
+      .delete(financeExpensesTable)
+      .where(eq(financeExpensesTable.id, params.data.id))
+      .returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Expense not found." });
+      return;
+    }
+
+    await db.insert(auditLogsTable).values({
+      actorUserId: userId,
+      action: "finance.expense.deleted",
+      recordType: "finance_expense",
+      recordId: deleted.id,
+      metadata: JSON.stringify({
+        category: deleted.category,
+        amount: deleted.amount,
+        description: deleted.description,
+      }),
+    });
+
+    res.json(
+      DeleteAdminFinanceExpenseResponse.parse({
+        id: deleted.id,
+        deleted: true,
+      }),
+    );
+  },
+);
+
+router.get(
+  "/admin/finance/overview",
+  async (req, res): Promise<void> => {
+    if (!(await requireFinanceUser(req, res))) return;
+
+    // The active period is the most recent open year; if every year is closed,
+    // fall back to the most recent year so the dashboard is never blank.
+    const periods = await db
+      .select()
+      .from(financePeriodsTable)
+      .orderBy(desc(financePeriodsTable.year));
+    const period =
+      periods.find((row) => row.status === "open") ?? periods[0] ?? null;
+
+    if (!period) {
+      res.json(
+        GetAdminFinanceOverviewResponse.parse({
+          period: null,
+          membersCharged: 0,
+          fullyPaid: 0,
+          partPaid: 0,
+          outstanding: 0,
+          waived: 0,
+          amountBilled: 0,
+          amountCollected: 0,
+          amountOutstanding: 0,
+          amountWaived: 0,
+          amountSpent: 0,
+          creditBalance: 0,
+          balance: 0,
+          byCategory: [],
+          recentPayments: [],
+        }),
+      );
+      return;
+    }
+
+    const statusTotals = await db
+      .select({
+        status: financeChargesTable.status,
+        chargeCount: count(),
+        amountDue: sql<number>`coalesce(sum(${financeChargesTable.amountDue}), 0)::int`,
+        amountPaid: sql<number>`coalesce(sum(${financeChargesTable.amountPaid}), 0)::int`,
+        amountWaived: sql<number>`coalesce(sum(${financeChargesTable.amountWaived}), 0)::int`,
+      })
+      .from(financeChargesTable)
+      .where(eq(financeChargesTable.periodId, period.id))
+      .groupBy(financeChargesTable.status);
+
+    const byStatus = new Map(statusTotals.map((row) => [row.status, row]));
+    const sumOf = (key: "chargeCount" | "amountDue" | "amountPaid" | "amountWaived") =>
+      statusTotals.reduce((sum, row) => sum + Number(row[key]), 0);
+
+    const amountBilled = sumOf("amountDue");
+    const amountCollected = sumOf("amountPaid");
+    const amountWaived = sumOf("amountWaived");
+    const amountOutstanding = Math.max(
+      0,
+      amountBilled - amountCollected - amountWaived,
+    );
+    // Money received beyond what was billed. It is real money the association
+    // holds, so it is reported rather than discarded, and it makes the totals
+    // reconcile: billed = collected + waived + outstanding - credit.
+    const creditBalance = Math.max(
+      0,
+      amountCollected + amountWaived - amountBilled,
+    );
+
+    const categoryTotals = await db
+      .select({
+        category: financeExpensesTable.category,
+        amount: sql<number>`coalesce(sum(${financeExpensesTable.amount}), 0)::int`,
+        entries: count(),
+      })
+      .from(financeExpensesTable)
+      .where(eq(financeExpensesTable.periodId, period.id))
+      .groupBy(financeExpensesTable.category)
+      .orderBy(desc(sql`sum(${financeExpensesTable.amount})`));
+
+    const amountSpent = categoryTotals.reduce(
+      (sum, row) => sum + Number(row.amount),
+      0,
+    );
+
+    const recentPayments = await db
+      .select({
+        payment: financePaymentsTable,
+        memberName: financeChargesTable.memberName,
+        membershipNumber: financeChargesTable.membershipNumber,
+      })
+      .from(financePaymentsTable)
+      .innerJoin(
+        financeChargesTable,
+        eq(financeChargesTable.id, financePaymentsTable.chargeId),
+      )
+      .where(eq(financeChargesTable.periodId, period.id))
+      .orderBy(desc(financePaymentsTable.createdAt))
+      .limit(8);
+
+    res.json(
+      GetAdminFinanceOverviewResponse.parse({
+        period: {
+          id: period.id,
+          year: period.year,
+          currency: period.currency,
+          label: period.label,
+          amountTierLow: period.amountTierLow,
+          amountTierStandard: period.amountTierStandard,
+          amountTierHigh: period.amountTierHigh,
+          status: period.status,
+          notes: period.notes,
+          createdAt: period.createdAt,
+          chargeCount: Number(sumOf("chargeCount")),
+          amountBilled,
+          amountCollected,
+        },
+        membersCharged: Number(sumOf("chargeCount")),
+        fullyPaid: Number(byStatus.get("paid")?.chargeCount ?? 0),
+        partPaid: Number(byStatus.get("part-paid")?.chargeCount ?? 0),
+        outstanding: Number(byStatus.get("outstanding")?.chargeCount ?? 0),
+        waived: Number(byStatus.get("waived")?.chargeCount ?? 0),
+        amountBilled,
+        amountCollected,
+        amountOutstanding,
+        amountWaived,
+        amountSpent,
+        creditBalance,
+        balance: amountCollected - amountSpent,
+        byCategory: categoryTotals.map((row) => ({
+          category: row.category,
+          amount: Number(row.amount),
+          entries: Number(row.entries),
+        })),
+        recentPayments: recentPayments.map(
+          ({ payment, memberName, membershipNumber }) => ({
+            id: payment.id,
+            chargeId: payment.chargeId,
+            memberName,
+            membershipNumber,
+            amount: payment.amount,
+            method: payment.method,
+            reference: payment.reference,
+            paidOn: payment.paidOn,
+            receivedBy: payment.receivedBy,
+            notes: payment.notes,
+            createdAt: payment.createdAt,
+          }),
+        ),
+      }),
+    );
+  },
+);
+
+router.get("/resident/subscription", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+
+  const [application] = await db
+    .select({ id: membershipApplicationsTable.id })
+    .from(membershipApplicationsTable)
+    .where(eq(membershipApplicationsTable.userId, userId))
+    .limit(1);
+
+  if (!application) {
+    res.json(GetMySubscriptionResponse.parse({ currency: "ZMW", charges: [] }));
+    return;
+  }
+
+  const rows = await db
+    .select({
+      charge: financeChargesTable,
+      year: financePeriodsTable.year,
+      currency: financePeriodsTable.currency,
+    })
+    .from(financeChargesTable)
+    .innerJoin(
+      financePeriodsTable,
+      eq(financePeriodsTable.id, financeChargesTable.periodId),
+    )
+    .where(eq(financeChargesTable.applicationId, application.id))
+    .orderBy(desc(financePeriodsTable.year));
+
+  const chargeIds = rows.map((row) => row.charge.id);
+  const payments =
+    chargeIds.length > 0
+      ? await db
+          .select()
+          .from(financePaymentsTable)
+          .where(inArray(financePaymentsTable.chargeId, chargeIds))
+          .orderBy(desc(financePaymentsTable.paidOn))
+      : [];
+  const paymentsByCharge = new Map<string, typeof payments>();
+  for (const payment of payments) {
+    const list = paymentsByCharge.get(payment.chargeId) ?? [];
+    list.push(payment);
+    paymentsByCharge.set(payment.chargeId, list);
+  }
+
+  res.json(
+    GetMySubscriptionResponse.parse({
+      currency: rows[0]?.currency ?? "ZMW",
+      charges: rows.map(({ charge, year }) => ({
+        id: charge.id,
+        year,
+        membershipNumber: charge.membershipNumber,
+        amountDue: charge.amountDue,
+        amountPaid: charge.amountPaid,
+        amountWaived: charge.amountWaived,
+        balance: Math.max(
+          0,
+          charge.amountDue - charge.amountPaid - charge.amountWaived,
+        ),
+        status: charge.status,
+        dueDate: charge.dueDate,
+        payments: (paymentsByCharge.get(charge.id) ?? []).map((payment) => ({
+          id: payment.id,
+          amount: payment.amount,
+          method: payment.method,
+          reference: payment.reference,
+          paidOn: payment.paidOn,
+        })),
+      })),
+    }),
   );
 });
 
