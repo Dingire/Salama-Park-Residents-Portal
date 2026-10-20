@@ -1281,7 +1281,7 @@ function HomeRedirect() { return <><Show when="signed-in"><Redirect to="/residen
 function RoutedErrorBoundary({children}:{children:ReactNode}) { const [location]=useLocation(); return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>; }
 function RouterRoutes() {
   const routes=['/about','/documents','/petition','/membership','/announcements','/elections','/results','/privacy','/faq','/contact'];
-  const resident=['/resident/dashboard','/resident/profile','/resident/application','/resident/petition','/resident/voting','/resident/receipts','/resident/notifications'];
+  const resident=['/resident/dashboard','/resident/profile','/resident/application','/resident/subscription','/resident/petition','/resident/voting','/resident/receipts','/resident/notifications'];
   const admin=Object.keys(adminCopy);
   return <RoutedErrorBoundary><Switch>
     <Route path="/" component={HomeRedirect}/>
