@@ -298,6 +298,8 @@ paths:
           description: Returning Officer or administrator role required
         "404":
           description: Application not found
+        "409":
+          description: The application already has a final decision; set override to replace it
   /admin/petition/submissions:
     get:
       operationId: getAdminPetitionSubmissions
@@ -978,6 +980,10 @@ components:
           type: ["string", "null"]
           enum: [duplicate, not-resident, incomplete-declaration, other]
         verificationNotes: { type: ["string", "null"], maxLength: 1000 }
+        # Corrections only. Verified and rejected decisions are otherwise final;
+        # an officer must set this deliberately to replace a recorded decision,
+        # and the replacement is written to the audit log as a correction.
+        override: { type: ["boolean", "null"] }
     PublicPollResults:
       type: object
       required:

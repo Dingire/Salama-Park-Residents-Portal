@@ -1120,12 +1120,16 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
     if (!existing) return null;
 
     // Verified and rejected are final. A decision is only recorded while an
-    // application is still awaiting one, so an already-decided record cannot be
-    // re-verified or re-rejected (whether by the UI or a direct API call).
+    // application is still awaiting one, unless the officer deliberately sets
+    // override, which replaces the recorded decision as a correction.
     const finalStatuses = ["verified", "rejected"];
-    if (finalStatuses.includes(existing.status)) {
+    const overriding = body.data.override === true;
+    if (finalStatuses.includes(existing.status) && !overriding) {
       return { alreadyDecided: true as const, status: existing.status };
     }
+    const previousStatus = finalStatuses.includes(existing.status)
+      ? existing.status
+      : null;
 
     let membershipNumber = existing.membershipNumber;
     if (body.data.status === "verified" && !membershipNumber) {
@@ -1153,6 +1157,12 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
     if (body.data.status === "verified") {
       update.membershipNumber = membershipNumber;
       update.admittedAt = existing.admittedAt ?? reviewedAt;
+    } else if (previousStatus === "verified") {
+      // A verified member corrected to another outcome gives up the admission
+      // number and admission date; otherwise they would keep a member number
+      // while no longer holding a verified membership.
+      update.membershipNumber = null;
+      update.admittedAt = null;
     }
 
     const [application] = await tx
@@ -1191,11 +1201,14 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
 
     await tx.insert(auditLogsTable).values({
       actorUserId: userId,
-      action: "membership.application.reviewed",
+      action: previousStatus
+        ? "membership.application.decision-changed"
+        : "membership.application.reviewed",
       recordType: "membership_application",
       recordId: application.id,
       metadata: JSON.stringify({
         status: application.status,
+        previousStatus,
         reason: body.data.reason.trim(),
         rejectionCategory: application.rejectionCategory,
         receivedBy: application.receivedBy,
@@ -1211,7 +1224,7 @@ router.post("/admin/applications/:id/review", async (req, res): Promise<void> =>
   }
   if (typeof result === "object" && "alreadyDecided" in result) {
     res.status(409).json({
-      error: `This application has already been ${result.status}. A decision cannot be changed once recorded.`,
+      error: `This application has already been ${result.status}. To replace that decision deliberately, use Change decision.`,
     });
     return;
   }

@@ -468,7 +468,8 @@ export const ReviewMembershipApplicationBody = zod.object({
   "receivedBy": zod.string().max(reviewMembershipApplicationBodyReceivedByMax).nullish(),
   "verifiedAgainstNrc": zod.boolean().nullish(),
   "rejectionCategory": zod.enum(['duplicate', 'not-resident', 'incomplete-declaration', 'other']).nullish(),
-  "verificationNotes": zod.string().max(reviewMembershipApplicationBodyVerificationNotesMax).nullish()
+  "verificationNotes": zod.string().max(reviewMembershipApplicationBodyVerificationNotesMax).nullish(),
+  "override": zod.boolean().nullish()
 })
 
 export const ReviewMembershipApplicationResponse = zod.object({

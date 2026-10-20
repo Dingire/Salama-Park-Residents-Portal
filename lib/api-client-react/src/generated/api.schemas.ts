@@ -706,6 +706,8 @@ export interface ApplicationReviewInput {
      * @nullable
      */
   verificationNotes?: string | null;
+  /** @nullable */
+  override?: boolean | null;
 }
 
 /**

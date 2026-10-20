@@ -800,13 +800,14 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
   const [search,setSearch]=useState('');
   const [reasons,setReasons]=useState<Record<string,string>>({});
   const [fulfilment,setFulfilment]=useState<Record<string,{receivedBy:string;verifiedAgainstNrc:boolean;rejectionCategory:string;verificationNotes:string}>>({});
+  const [correcting,setCorrecting]=useState<Record<string,boolean>>({});
   const [actionError,setActionError]=useState('');
   const params={page:1,pageSize:25,search:search.trim()||undefined};
   const applications=useGetAdminApplications(params,{query:{queryKey:getGetAdminApplicationsQueryKey(params)}});
   const review=useReviewMembershipApplication();
   const draftFor=(item:any)=>fulfilment[item.id]??{receivedBy:item.receivedBy??'',verifiedAgainstNrc:item.verifiedAgainstNrc??false,rejectionCategory:item.rejectionCategory??'',verificationNotes:item.verificationNotes??''};
   const setDraft=(item:any,patch:Partial<{receivedBy:string;verifiedAgainstNrc:boolean;rejectionCategory:string;verificationNotes:string}>)=>setFulfilment(current=>({...current,[item.id]:{...draftFor(item),...patch}}));
-  const submitReview=(item:any,status:'verified'|'clarification-requested'|'rejected')=>{
+  const submitReview=(item:any,status:'verified'|'clarification-requested'|'rejected',override=false)=>{
     const reason=reasons[item.id]?.trim()||'';
     const draft=draftFor(item);
     setActionError('');
@@ -819,9 +820,11 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
       verifiedAgainstNrc:draft.verifiedAgainstNrc,
       rejectionCategory:status==='rejected'?draft.rejectionCategory as 'duplicate'|'not-resident'|'incomplete-declaration'|'other':null,
       verificationNotes:draft.verificationNotes.trim()||null,
+      override:override||null,
     }},{onSuccess:()=>{
       setReasons(current=>({...current,[item.id]:''}));
       setFulfilment(current=>({...current,[item.id]:draftFor({id:item.id})}));
+      setCorrecting(current=>({...current,[item.id]:false}));
       queryClient.invalidateQueries({queryKey:getGetAdminApplicationsQueryKey(params)});
       onChanged();
     },onError:error=>setActionError(serverErrorMessage(error,'The decision could not be recorded. Please try again.'))});
@@ -832,9 +835,10 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
     {applications.isLoading?<Skeleton rows={3}/>:applications.isError?<ErrorLine retry={()=>applications.refetch()}/>:!applications.data?.items.length?<EmptyPanel title="No applications found" text="No matching applications have been submitted."/>:
       <div className="space-y-3">{applications.data.items.map(item=>{
         const draft=draftFor(item);
-        // Verified and rejected are final, so the decision controls are only
-        // offered while the application is still awaiting one.
+        // Verified and rejected are final, so the decision controls stay hidden
+        // unless the officer deliberately asks to correct the decision.
         const isDecided=item.status==='verified'||item.status==='rejected';
+        const isCorrecting=correcting[item.id]===true;
         return <article key={item.id} className="rounded-xl border border-[#e1dfd8] bg-white p-5">
           <div>
             <p className="font-semibold text-[#1c2e44]">{item.fullName}</p>
@@ -847,7 +851,8 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
             {item.decisionReason&&<p className="mt-2 text-sm text-[#687486]">Decision note: {item.decisionReason}</p>}
             {item.verificationNotes&&<p className="mt-1 text-sm text-[#687486]">Verification notes: {item.verificationNotes}</p>}
           </div>
-          {canReview&&!isDecided&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#647083]">Section F · Verification record</p>
+          {canReview&&(!isDecided||isCorrecting)&&<div className="mt-4 border-t border-[#e8e6df] pt-4"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#647083]">{isCorrecting?'Section F · Correct the recorded decision':'Section F · Verification record'}</p>
+            {isCorrecting&&<div className="mb-3"><Notice kind="error">This application is already <strong>{item.status}</strong>. Recording a new decision replaces it and is noted in the audit log as a correction{item.membershipNumber?`. If you no longer verify this member, the membership number ${item.membershipNumber} is released`:''}. <button type="button" onClick={()=>setCorrecting(current=>({...current,[item.id]:false}))} className="underline">Cancel</button></Notice></div>}
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-semibold text-[#536174]">Received by<input value={draft.receivedBy} onChange={event=>setDraft(item,{receivedBy:event.target.value})} className="field mt-1.5" maxLength={160} placeholder="Street representative / official" /></label>
               <label className="block text-xs font-semibold text-[#536174]">Rejection category<select value={draft.rejectionCategory} onChange={event=>setDraft(item,{rejectionCategory:event.target.value})} className="field mt-1.5"><option value="">Not applicable</option><option value="duplicate">Duplicate application</option><option value="not-resident">Not a resident</option><option value="incomplete-declaration">Incomplete declaration</option><option value="other">Other</option></select></label>
@@ -855,11 +860,13 @@ function AdminApplicationsPanel({canReview,onChanged}:{canReview:boolean;onChang
             <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-[#536174]"><input type="checkbox" checked={draft.verifiedAgainstNrc} onChange={event=>setDraft(item,{verifiedAgainstNrc:event.target.checked})} className="accent-[#315f43]" />Details verified against NRC / passport</label>
             <label className="mt-3 block text-xs font-semibold text-[#536174]">Decision reason<input value={reasons[item.id]??''} onChange={event=>setReasons(current=>({...current,[item.id]:event.target.value}))} className="field mt-1.5" maxLength={1000} /></label>
             <label className="mt-3 block text-xs font-semibold text-[#536174]">Verification notes (optional)<input value={draft.verificationNotes} onChange={event=>setDraft(item,{verificationNotes:event.target.value})} className="field mt-1.5" maxLength={1000} /></label>
-            <div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'verified')} className="btn-primary disabled:opacity-50">Verify</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'clarification-requested')} className="btn-secondary disabled:opacity-50">Request clarification</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'rejected')} className="btn-secondary disabled:opacity-50">Reject</button></div>
+            <div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'verified',isCorrecting)} className="btn-primary disabled:opacity-50">Verify</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'clarification-requested',isCorrecting)} className="btn-secondary disabled:opacity-50">Request clarification</button><button type="button" disabled={review.isPending} onClick={()=>submitReview(item,'rejected',isCorrecting)} className="btn-secondary disabled:opacity-50">Reject</button></div>
           </div>}
-          {canReview&&isDecided&&<div className="mt-4 border-t border-[#e8e6df] pt-4">
+          {canReview&&isDecided&&!isCorrecting&&<div className="mt-4 border-t border-[#e8e6df] pt-4">
             <p className="text-xs font-bold uppercase tracking-wider text-[#647083]">Decision recorded</p>
-            <p className="mt-2 text-sm text-[#536174]">This application was <strong>{item.status}</strong>{item.membershipNumber?` and admitted as ${item.membershipNumber}`:''}. Verified and rejected applications are final, so no further decision can be recorded here.</p>
+            <p className="mt-2 text-sm text-[#536174]">This application was <strong>{item.status}</strong>{item.membershipNumber?` and admitted as ${item.membershipNumber}`:''}. Verified and rejected applications are final.</p>
+            <div className="mt-3"><button type="button" onClick={()=>{setActionError('');setCorrecting(current=>({...current,[item.id]:true}));}} className="btn-secondary">Change decision</button></div>
+            <p className="mt-2 text-xs text-[#87918e]">Use this only to correct a mistake. The change is recorded in the audit log.</p>
           </div>}
         </article>;
       })}</div>}
