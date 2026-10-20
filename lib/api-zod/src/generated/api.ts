@@ -760,7 +760,7 @@ export const CloseAdminPetitionConfigurationResponse = zod.object({
 export const GetAdminRolesResponse = zod.object({
   "items": zod.array(zod.object({
   "userId": zod.string(),
-  "role": zod.enum(['resident', 'returning-officer', 'scrutineer', 'administrator']),
+  "role": zod.enum(['resident', 'returning-officer', 'scrutineer', 'treasurer', 'administrator']),
   "assignedBy": zod.string().nullish(),
   "assignedAt": zod.coerce.date()
 }))
@@ -776,12 +776,12 @@ export const grantAdminRoleBodyUserIdMax = 200;
 
 export const GrantAdminRoleBody = zod.object({
   "userId": zod.string().min(1).max(grantAdminRoleBodyUserIdMax),
-  "role": zod.enum(['resident', 'returning-officer', 'scrutineer', 'administrator'])
+  "role": zod.enum(['resident', 'returning-officer', 'scrutineer', 'treasurer', 'administrator'])
 })
 
 export const GrantAdminRoleResponse = zod.object({
   "userId": zod.string(),
-  "roles": zod.array(zod.enum(['resident', 'returning-officer', 'scrutineer', 'administrator']))
+  "roles": zod.array(zod.enum(['resident', 'returning-officer', 'scrutineer', 'treasurer', 'administrator']))
 })
 
 
@@ -794,12 +794,12 @@ export const revokeAdminRoleBodyUserIdMax = 200;
 
 export const RevokeAdminRoleBody = zod.object({
   "userId": zod.string().min(1).max(revokeAdminRoleBodyUserIdMax),
-  "role": zod.enum(['resident', 'returning-officer', 'scrutineer', 'administrator'])
+  "role": zod.enum(['resident', 'returning-officer', 'scrutineer', 'treasurer', 'administrator'])
 })
 
 export const RevokeAdminRoleResponse = zod.object({
   "userId": zod.string(),
-  "roles": zod.array(zod.enum(['resident', 'returning-officer', 'scrutineer', 'administrator']))
+  "roles": zod.array(zod.enum(['resident', 'returning-officer', 'scrutineer', 'treasurer', 'administrator']))
 })
 
 

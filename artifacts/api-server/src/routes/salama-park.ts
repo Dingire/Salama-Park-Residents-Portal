@@ -1766,6 +1766,7 @@ const grantableRoles = [
   "resident",
   "returning-officer",
   "scrutineer",
+  "treasurer",
   "administrator",
 ] as const;
 

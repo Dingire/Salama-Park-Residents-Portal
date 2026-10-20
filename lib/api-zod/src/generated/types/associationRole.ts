@@ -13,5 +13,6 @@ export const AssociationRole = {
   resident: 'resident',
   'returning-officer': 'returning-officer',
   scrutineer: 'scrutineer',
+  treasurer: 'treasurer',
   administrator: 'administrator',
 } as const;

@@ -21,6 +21,13 @@ export const reviewerRoles = [
 ] as const;
 
 /**
+ * Roles that may see and change association finances. Deliberately narrower
+ * than adminRoles: returning officers and scrutineers run the membership and
+ * petition work, and have no need to see members' payment records.
+ */
+export const financeRoles = ["admin", "administrator", "treasurer"] as const;
+
+/**
  * Clerk is optional for local development. When no secret key is configured the
  * portal still serves its public information, but every authenticated action
  * reports "sign in required".

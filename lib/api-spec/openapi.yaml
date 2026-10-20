@@ -1197,7 +1197,7 @@ components:
         assignedAt: { type: string, format: date-time }
     AssociationRole:
       type: string
-      enum: [resident, returning-officer, scrutineer, administrator]
+      enum: [resident, returning-officer, scrutineer, treasurer, administrator]
     RoleGrantInput:
       type: object
       required: [userId, role]

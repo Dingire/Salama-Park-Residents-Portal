@@ -22,6 +22,7 @@ export const associationRole = pgEnum("association_role", [
   "resident",
   "returning-officer",
   "scrutineer",
+  "treasurer",
   "administrator",
 ]);
 
@@ -401,6 +402,167 @@ export const auditLogsTable = pgTable(
   (table) => [
     index("audit_logs_created_idx").on(table.createdAt),
     index("audit_logs_actor_idx").on(table.actorUserId, table.createdAt),
+  ],
+).enableRLS();
+
+/* -------------------------------------------------------------------------- *
+ * Finance — subscriptions, payments and expenses.
+ *
+ * All money is stored in minor units (ngwee) as a plain integer, never a
+ * decimal or float, so totals are exact. A value of 10000 is K100.00.
+ * -------------------------------------------------------------------------- */
+
+export const financePeriodStatus = pgEnum("finance_period_status", [
+  "open",
+  "closed",
+]);
+
+export const financeChargeStatus = pgEnum("finance_charge_status", [
+  "outstanding",
+  "part-paid",
+  "paid",
+  "waived",
+]);
+
+export const financeExpenseCategory = pgEnum("finance_expense_category", [
+  "printing-stationery",
+  "venue-hire",
+  "utilities",
+  "security",
+  "maintenance",
+  "welfare",
+  "bank-charges",
+  "transport",
+  "other",
+]);
+
+/**
+ * A financial year for subscriptions. Amounts live here rather than being
+ * hardcoded, so a new year is a new row and past years stay immutable.
+ */
+export const financePeriodsTable = pgTable(
+  "finance_periods",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    year: integer("year").notNull().unique(),
+    currency: text("currency").notNull().default("ZMW"),
+    label: text("label"),
+    // Subscription amounts for this year, in minor units.
+    amountTierLow: integer("amount_tier_low").notNull(),
+    amountTierStandard: integer("amount_tier_standard").notNull(),
+    amountTierHigh: integer("amount_tier_high").notNull(),
+    status: financePeriodStatus("status").notNull().default("open"),
+    notes: text("notes"),
+    createdByUserId: text("created_by_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("finance_periods_year_idx").on(table.year)],
+).enableRLS();
+
+/**
+ * What a member owes for one period. Generated from the verified register, so
+ * the expected amount follows the member's recorded subscription choice.
+ */
+export const financeChargesTable = pgTable(
+  "finance_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => financePeriodsTable.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => membershipApplicationsTable.id, {
+        onDelete: "cascade",
+      }),
+    membershipNumber: text("membership_number"),
+    memberName: text("member_name").notNull(),
+    amountDue: integer("amount_due").notNull(),
+    amountPaid: integer("amount_paid").notNull().default(0),
+    amountWaived: integer("amount_waived").notNull().default(0),
+    status: financeChargeStatus("status").notNull().default("outstanding"),
+    dueDate: text("due_date"),
+    waivedReason: text("waived_reason"),
+    lastReminderAt: timestamp("last_reminder_at", { withTimezone: true }),
+    reminderCount: integer("reminder_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("finance_charges_period_application_idx").on(
+      table.periodId,
+      table.applicationId,
+    ),
+    index("finance_charges_status_idx").on(table.periodId, table.status),
+    index("finance_charges_application_idx").on(table.applicationId),
+  ],
+).enableRLS();
+
+/**
+ * Money received against a charge. Recorded manually by the treasurer from
+ * mobile money, bank transfer or cash, with a receipt reference for the books.
+ */
+export const financePaymentsTable = pgTable(
+  "finance_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chargeId: uuid("charge_id")
+      .notNull()
+      .references(() => financeChargesTable.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    method: paymentMethod("method").notNull(),
+    reference: text("reference"),
+    paidOn: text("paid_on").notNull(),
+    receivedBy: text("received_by"),
+    notes: text("notes"),
+    recordedByUserId: text("recorded_by_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("finance_payments_charge_idx").on(table.chargeId),
+    index("finance_payments_paid_on_idx").on(table.paidOn),
+  ],
+).enableRLS();
+
+/** Money going out. Category-tagged so income and expenditure can be totalled. */
+export const financeExpensesTable = pgTable(
+  "finance_expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    periodId: uuid("period_id").references(() => financePeriodsTable.id, {
+      onDelete: "set null",
+    }),
+    category: financeExpenseCategory("category").notNull(),
+    description: text("description").notNull(),
+    amount: integer("amount").notNull(),
+    paidOn: text("paid_on").notNull(),
+    payee: text("payee"),
+    method: paymentMethod("method"),
+    reference: text("reference"),
+    receiptReference: text("receipt_reference"),
+    notes: text("notes"),
+    recordedByUserId: text("recorded_by_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("finance_expenses_period_idx").on(table.periodId, table.category),
+    index("finance_expenses_paid_on_idx").on(table.paidOn),
   ],
 ).enableRLS();
 

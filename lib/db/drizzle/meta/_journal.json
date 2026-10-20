@@ -29,6 +29,13 @@
       "when": 1792189054627,
       "tag": "0003_full_registration_form",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792189054727,
+      "tag": "0004_finance",
+      "breakpoints": true
     }
   ]
 }
