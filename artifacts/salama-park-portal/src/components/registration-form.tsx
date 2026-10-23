@@ -12,6 +12,9 @@ import { SALAMA_PARK_STREETS, SALAMA_PARK_STREET_LIST_READY } from '../data/sala
  */
 export { SALAMA_PARK_STREETS, SALAMA_PARK_STREET_LIST_READY, getSalamaParkStreets } from '../data/salama-park-streets';
 
+/** Sentinel value for the "not in the list" option on the street dropdown. */
+const OTHER_STREET = '__other__';
+
 const DECLARATIONS = [
   {
     key: 'declarationConfirmResident',
@@ -172,6 +175,10 @@ export function RegistrationForm({
     Object.fromEntries(DECLARATIONS.map((item) => [item.key, false])),
   );
   const [localError, setLocalError] = useState('');
+  // When the street list is a dropdown we still allow a street the association
+  // has not listed yet. Choosing "Other (not listed)" reveals a free-text field
+  // so an incomplete list can never stop a resident from applying.
+  const [streetIsOther, setStreetIsOther] = useState(false);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -414,16 +421,35 @@ export function RegistrationForm({
             onChange={(v) => update('houseNumber', v)}
           />
           {SALAMA_PARK_STREET_LIST_READY ? (
-            <SelectField
-              label="Street or zone"
-              required
-              value={form.streetOrZone}
-              onChange={(v) => update('streetOrZone', v)}
-              options={[
-                ['', 'Select…'],
-                ...SALAMA_PARK_STREETS.map((street) => [street, street] as const),
-              ]}
-            />
+            <div className="space-y-4">
+              <SelectField
+                label="Street or zone"
+                required
+                value={streetIsOther ? OTHER_STREET : form.streetOrZone}
+                onChange={(v) => {
+                  if (v === OTHER_STREET) {
+                    setStreetIsOther(true);
+                    update('streetOrZone', '');
+                  } else {
+                    setStreetIsOther(false);
+                    update('streetOrZone', v);
+                  }
+                }}
+                options={[
+                  ['', 'Select…'],
+                  ...SALAMA_PARK_STREETS.map((street) => [street, street] as const),
+                  [OTHER_STREET, 'Other (not listed)'] as const,
+                ]}
+              />
+              {streetIsOther && (
+                <TextField
+                  label="Enter your street or zone"
+                  required
+                  value={form.streetOrZone}
+                  onChange={(v) => update('streetOrZone', v)}
+                />
+              )}
+            </div>
           ) : (
             <TextField
               label="Street or zone"
