@@ -892,6 +892,25 @@ export const GetAdminFinanceOverviewResponse = zod.object({
 
 
 /**
+ * @summary Get per-street membership counts for the geo heatmap
+ */
+export const GetAdminGeoStreetStatsQueryParams = zod.object({
+  "verifiedOnly": zod.coerce.string().optional(),
+  "includeAll": zod.coerce.string().optional()
+})
+
+export const GetAdminGeoStreetStatsResponse = zod.object({
+  "streets": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "lat": zod.number().nullable(),
+  "lng": zod.number().nullable()
+}))
+})
+
+
+/**
  * @summary List subscription periods and their tier amounts
  */
 export const getAdminFinancePeriodsResponseAmountTierLowMin = 0;

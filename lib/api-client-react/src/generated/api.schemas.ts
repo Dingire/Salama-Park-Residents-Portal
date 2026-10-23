@@ -1350,6 +1350,20 @@ export interface AdminFinanceOverview {
   recentPayments: AdminFinancePayment[];
 }
 
+export interface AdminGeoStreetStat {
+  key: string;
+  label: string;
+  count: number;
+  /** @nullable */
+  lat: number | null;
+  /** @nullable */
+  lng: number | null;
+}
+
+export interface AdminGeoStreetStats {
+  streets: AdminGeoStreetStat[];
+}
+
 export type MySubscriptionChargeStatus = typeof MySubscriptionChargeStatus[keyof typeof MySubscriptionChargeStatus];
 
 
@@ -1455,6 +1469,11 @@ export const GetAdminPetitionSubmissionsStatus = {
   rejected: 'rejected',
   withdrawn: 'withdrawn',
 } as const;
+
+export type GetAdminGeoStreetStatsParams = {
+verifiedOnly?: string;
+includeAll?: string;
+};
 
 export type GetAdminFinanceChargesParams = {
 periodId?: string;

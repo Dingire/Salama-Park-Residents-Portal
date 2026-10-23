@@ -2,18 +2,15 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowRight, Info } from 'lucide-react';
 import { Link } from 'wouter';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
+import { SALAMA_PARK_STREETS, SALAMA_PARK_STREET_LIST_READY } from '../data/salama-park-streets';
 
 /**
  * Street name list flag.
  *
- * A11 (street or zone) is deliberately free text for now because the
- * association has not yet supplied its official list of Salama Park street
- * names. Fill SALAMA_PARK_STREETS with the official names and set
- * SALAMA_PARK_STREET_LIST_READY to true to switch the field to a strict
- * dropdown. Until then the field renders as free text with autocomplete hints.
+ * A11 (street or zone) uses a dropdown backed by SALAMA_PARK_STREETS.
+ * Add streets to src/data/salama-park-streets.ts as they become known.
  */
-export const SALAMA_PARK_STREETS: string[] = [];
-export const SALAMA_PARK_STREET_LIST_READY = false;
+export { SALAMA_PARK_STREETS, SALAMA_PARK_STREET_LIST_READY, getSalamaParkStreets } from '../data/salama-park-streets';
 
 const DECLARATIONS = [
   {

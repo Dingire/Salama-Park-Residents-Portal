@@ -585,6 +585,35 @@ paths:
           description: Authentication required
         "403":
           description: Administrator or treasurer role required
+  /admin/geo/street-stats:
+    get:
+      operationId: getAdminGeoStreetStats
+      tags: [resident]
+      summary: Get per-street membership counts for the geo heatmap
+      security:
+        - clerkSession: []
+      parameters:
+        - name: verifiedOnly
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: includeAll
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Street counts for verified or non-rejected applications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminGeoStreetStats"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator or treasurer role required
   /admin/finance/periods:
     get:
       operationId: getAdminFinancePeriods
@@ -1743,6 +1772,34 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminFinancePayment"
+    AdminGeoStreetStats:
+      type: object
+      required:
+        - streets
+      properties:
+        streets:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminGeoStreetStat"
+    AdminGeoStreetStat:
+      type: object
+      required:
+        - key
+        - label
+        - count
+        - lat
+        - lng
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+        lat:
+          type: ["number", "null"]
+        lng:
+          type: ["number", "null"]
     FinanceCategoryTotal:
       type: object
       required: [category, amount, entries]

@@ -29,6 +29,7 @@ import type {
   AdminFinanceExpense,
   AdminFinanceExpensePage,
   AdminFinanceOverview,
+  AdminGeoStreetStats,
   AdminPetitionConfigurationState,
   AdminPetitionSubmission,
   AdminPetitionSubmissionPage,
@@ -46,6 +47,7 @@ import type {
   GetAdminApplicationsParams,
   GetAdminFinanceChargesParams,
   GetAdminFinanceExpensesParams,
+  GetAdminGeoStreetStatsParams,
   GetAdminPetitionSubmissionsParams,
   HealthStatus,
   MySubscription,
@@ -2258,6 +2260,90 @@ export function useGetAdminFinanceOverview<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAdminFinanceOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminGeoStreetStatsUrl = (params?: GetAdminGeoStreetStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/geo/street-stats?${stringifiedParams}` : `/api/admin/geo/street-stats`
+}
+
+/**
+ * @summary Get per-street membership counts for the geo heatmap
+ */
+export const getAdminGeoStreetStats = async (params?: GetAdminGeoStreetStatsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminGeoStreetStats> => {
+
+  return customFetch<AdminGeoStreetStats>(getGetAdminGeoStreetStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminGeoStreetStatsQueryKey = (params?: GetAdminGeoStreetStatsParams,) => {
+    return [
+    `/api/admin/geo/street-stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminGeoStreetStatsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminGeoStreetStats>>, TError = ErrorType<void>>(params?: GetAdminGeoStreetStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminGeoStreetStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminGeoStreetStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminGeoStreetStats>>> = ({ signal }) => getAdminGeoStreetStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminGeoStreetStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminGeoStreetStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminGeoStreetStats>>>
+export type GetAdminGeoStreetStatsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get per-street membership counts for the geo heatmap
+ */
+
+export function useGetAdminGeoStreetStats<TData = Awaited<ReturnType<typeof getAdminGeoStreetStats>>, TError = ErrorType<void>>(
+ params?: GetAdminGeoStreetStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminGeoStreetStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminGeoStreetStatsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

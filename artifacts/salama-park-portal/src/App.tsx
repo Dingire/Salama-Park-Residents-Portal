@@ -47,9 +47,10 @@ import {
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
   ArrowRight, ArrowUpRight, BadgeCheck, ChevronDown, ClipboardCheck, FileText, Landmark, LockKeyhole,
-  Menu, ShieldCheck, UserRound, X,
+  Map as MapIcon, Menu, ShieldCheck, UserRound, X,
 } from 'lucide-react';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { AdminGeoMap } from '@/components/admin-geo-map';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -87,7 +88,7 @@ const residentNav = [
 const adminNav = [
   ['Dashboard', '/admin/dashboard'], ['Members', '/admin/members'], ['Verifications', '/admin/verifications'],
   ['Petitions', '/admin/petitions'], ['Register snapshots', '/admin/register-snapshots'], ['Finance', '/admin/finance'],
-  ['Documents', '/admin/documents'],
+  ['Map', '/admin/map'], ['Documents', '/admin/documents'],
   ['Resolutions', '/admin/resolutions'], ['Elections', '/admin/elections'], ['Candidates', '/admin/candidates'],
   ['Results', '/admin/results'], ['Meetings', '/admin/meetings'], ['Announcements', '/admin/announcements'],
   ['Reports', '/admin/reports'], ['Audit logs', '/admin/audit-logs'], ['Settings', '/admin/settings'],
@@ -143,7 +144,7 @@ const publicTitles: Record<string, [string, string]> = {
 const adminCopy: Record<string, string> = {
   '/admin/dashboard': 'Governance workspace overview', '/admin/members': 'Resident membership register', '/admin/verifications': 'Review resident verification',
   '/admin/petitions': 'Petition configuration and consent', '/admin/register-snapshots': 'Approved register snapshots', '/admin/finance': 'Subscriptions, payments and expenses',
-  '/admin/documents': 'Governance document publishing',
+  '/admin/map': 'Population spread by area (admins only)', '/admin/documents': 'Governance document publishing',
   '/admin/resolutions': 'Association resolutions', '/admin/elections': 'Election configuration', '/admin/candidates': 'Candidate register',
   '/admin/results': 'Election results publishing', '/admin/meetings': 'Meetings and minutes', '/admin/announcements': 'Public announcements',
   '/admin/reports': 'Governance reports', '/admin/audit-logs': 'Administrative audit trail', '/admin/settings': 'Roles and administrative access',
@@ -603,6 +604,7 @@ function AdminPage({path}:{path:string}) {
           :path==='/admin/petitions' ? <AdminPetitionConfigurationPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicPetitionQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
           :path==='/admin/register-snapshots' ? <AdminRegisterSnapshotsPanel onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});queryClient.invalidateQueries({queryKey:getGetPublicOverviewQueryKey()});}}/>
           :path==='/admin/finance' ? <AdminFinancePanel canManage={isFinance}/>
+          :path==='/admin/map' ? (isFinance ? <AdminGeoMap /> : <div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6"><p className="text-sm text-[#687486]">Map access requires an administrator or treasurer role.</p></div>)
           :path==='/admin/settings' ? <AdminRolesPanel isAdmin={isAdmin}/>
           :isManagementPage ? <AdminApplicationsPanel canReview={isReviewer} onChanged={()=>{queryClient.invalidateQueries({queryKey:getGetAdminDashboardQueryKey()});}}/>
           :<div className="rounded-2xl border border-dashed border-[#cfd5cd] bg-[#fbfaf6] p-6 sm:p-8"><div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1e8] text-[#477454]"><LockKeyhole size={20}/></div><h2 className="serif text-2xl font-bold text-[#1d3048]">This workflow is not configured.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#687486]">No approved official records are available for this page. Configuration and publishing actions are not enabled until the Association supplies and approves the required rules and source documents.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/documents" className="btn-secondary">View public documents <ArrowUpRight size={14}/></Link><Link href="/announcements" className="btn-secondary">Public notices <ArrowUpRight size={14}/></Link></div></div>}
