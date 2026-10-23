@@ -59,9 +59,9 @@ export function AdminGeoMap() {
       <div className="overflow-hidden rounded-2xl border border-[#e1dfd8] bg-white">
         <MapContainer center={SALAMA_CENTER} zoom={15} className="h-[520px] w-full" scrollWheelZoom>
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            subdomains={['a', 'b', 'c', 'd']}
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png"
+            subdomains={['a', 'b', 'c']}
           />
           <Polygon positions={SALAMA_BOUNDARY} pathOptions={{ color: '#315f43', weight: 2, fillColor: '#6a9c71', fillOpacity: 0.08 }} />
           {streets.map((street) => {
