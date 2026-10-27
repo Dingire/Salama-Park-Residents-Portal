@@ -157,6 +157,10 @@ export const membershipApplicationsTable = pgTable(
     nationality: text("nationality"),
     phoneAlt: text("phone_alt"),
     plotNumber: text("plot_number"),
+    // Section A — Identity document (for verification)
+    idDocumentDataUrl: text("id_document_data_url"),
+    idDocumentName: text("id_document_name"),
+    idDocumentMimeType: text("id_document_mime_type"),
     // Section B — Residency
     residencyStatus: residencyStatus("residency_status"),
     residencySince: text("residency_since"),
@@ -341,6 +345,9 @@ export const petitionSubmissionsTable = pgTable(
     emergencyContactName: text("emergency_contact_name"),
     emergencyContactPhone: text("emergency_contact_phone"),
     emergencyContactRelationship: text("emergency_contact_relationship"),
+    idDocumentDataUrl: text("id_document_data_url"),
+    idDocumentName: text("id_document_name"),
+    idDocumentMimeType: text("id_document_mime_type"),
     onMembersRegister: boolean("on_members_register"),
     duplicateFlag: boolean("duplicate_flag"),
     verifiedBy: text("verified_by"),

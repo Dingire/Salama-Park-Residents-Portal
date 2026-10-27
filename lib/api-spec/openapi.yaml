@@ -1062,6 +1062,10 @@ components:
         houseNumber: { type: string, minLength: 1, maxLength: 80 }
         streetOrZone: { type: string, minLength: 1, maxLength: 120 }
         plotNumber: { type: ["string", "null"], maxLength: 80 }
+        # Section A — Identity document (for verification)
+        idDocumentDataUrl: { type: ["string", "null"], maxLength: 8000000 }
+        idDocumentName: { type: ["string", "null"], maxLength: 160 }
+        idDocumentMimeType: { type: ["string", "null"], maxLength: 80 }
         # Section B — Residency
         livesInSalamaPark: { type: boolean }
         residencyStatus:

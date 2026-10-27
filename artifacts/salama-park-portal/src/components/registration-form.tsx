@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowRight, Info } from 'lucide-react';
+import { ArrowRight, Camera, FileUp, Info, X } from 'lucide-react';
 import { Link } from 'wouter';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import { SALAMA_PARK_STREETS, SALAMA_PARK_STREET_LIST_READY } from '../data/salama-park-streets';
@@ -74,6 +74,9 @@ type FormState = {
   houseNumber: string;
   streetOrZone: string;
   plotNumber: string;
+  idDocumentDataUrl: string;
+  idDocumentName: string;
+  idDocumentMimeType: string;
   // B — Residency
   livesInSalamaPark: 'yes' | 'no';
   residencyStatus:
@@ -130,6 +133,9 @@ const initialState: FormState = {
   houseNumber: '',
   streetOrZone: '',
   plotNumber: '',
+  idDocumentDataUrl: '',
+  idDocumentName: '',
+  idDocumentMimeType: '',
   livesInSalamaPark: 'yes',
   residencyStatus: '',
   residencySince: '',
@@ -285,6 +291,9 @@ export function RegistrationForm({
       houseNumber: form.houseNumber.trim(),
       streetOrZone: form.streetOrZone.trim(),
       plotNumber: form.plotNumber.trim() || null,
+      idDocumentDataUrl: form.idDocumentDataUrl || null,
+      idDocumentName: form.idDocumentName || null,
+      idDocumentMimeType: form.idDocumentMimeType || null,
       livesInSalamaPark: form.livesInSalamaPark === 'yes',
       residencyStatus: form.residencyStatus as
         | 'owner-occupier'
@@ -379,10 +388,66 @@ export function RegistrationForm({
           <TextField
             label="Date of birth"
             required
-            type="date"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+            placeholder="YYYY-MM-DD"
             value={form.dateOfBirth}
             onChange={(v) => update('dateOfBirth', v)}
+            hint="Type the date as numbers (YYYY-MM-DD), e.g. 1985-06-12."
           />
+          <div className="rounded-xl border border-[#e1dfd8] p-4">
+            <p className="text-sm font-medium text-[#35485c]">ID / NRC document (for verification)</p>
+            <p className="mt-1 text-xs leading-5 text-[#87918e]">
+              Upload a photo of your NRC (or passport) to help the association verify your application. JPG, PNG or WebP,
+              up to ~3MB.
+            </p>
+            {form.idDocumentDataUrl ? (
+              <div className="mt-3 space-y-2">
+                <img
+                  src={form.idDocumentDataUrl}
+                  alt={form.idDocumentName || 'ID document'}
+                  className="max-h-64 rounded-lg border border-[#e1dfd8]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    update('idDocumentDataUrl', '');
+                    update('idDocumentName', '');
+                    update('idDocumentMimeType', '');
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-[#8a3737]"
+                >
+                  <X size={14} /> Remove document
+                </button>
+              </div>
+            ) : (
+              <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#cfd5cd] px-4 py-3 text-sm text-[#47566a] hover:bg-[#f7f7f4]">
+                <FileUp size={16} />
+                Upload ID photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 3 * 1024 * 1024) {
+                      alert('File too large. Please upload an image under 3MB.');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      update('idDocumentDataUrl', String(reader.result));
+                      update('idDocumentName', file.name);
+                      update('idDocumentMimeType', file.type);
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            )}
+          </div>
           <SelectField
             label="Gender"
             required
@@ -982,6 +1047,9 @@ function TextField({
   min,
   max,
   list,
+  inputMode,
+  pattern,
+  autoComplete,
 }: {
   label: string;
   required?: boolean;
@@ -993,6 +1061,9 @@ function TextField({
   min?: number;
   max?: number;
   list?: string;
+  inputMode?: 'text' | 'numeric' | 'decimal' | 'tel' | 'search' | 'email' | 'url';
+  pattern?: string;
+  autoComplete?: string;
 }) {
   return (
     <label className="block text-sm font-medium text-[#35485c]">
@@ -1006,6 +1077,9 @@ function TextField({
         max={max}
         list={list}
         placeholder={placeholder}
+        inputMode={inputMode}
+        pattern={pattern}
+        autoComplete={autoComplete}
         onChange={(event) => onChange(event.target.value)}
         className="field mt-1.5"
       />

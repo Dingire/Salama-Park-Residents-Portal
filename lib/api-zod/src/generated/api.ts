@@ -158,6 +158,12 @@ export const submitResidentApplicationBodyStreetOrZoneMax = 120;
 
 export const submitResidentApplicationBodyPlotNumberMax = 80;
 
+export const submitResidentApplicationBodyIdDocumentDataUrlMax = 8000000;
+
+export const submitResidentApplicationBodyIdDocumentNameMax = 160;
+
+export const submitResidentApplicationBodyIdDocumentMimeTypeMax = 80;
+
 export const submitResidentApplicationBodyResidencySinceMin = 4;
 export const submitResidentApplicationBodyResidencySinceMax = 32;
 
@@ -203,6 +209,9 @@ export const SubmitResidentApplicationBody = zod.object({
   "houseNumber": zod.string().min(1).max(submitResidentApplicationBodyHouseNumberMax),
   "streetOrZone": zod.string().min(1).max(submitResidentApplicationBodyStreetOrZoneMax),
   "plotNumber": zod.string().max(submitResidentApplicationBodyPlotNumberMax).nullish(),
+  "idDocumentDataUrl": zod.string().max(submitResidentApplicationBodyIdDocumentDataUrlMax).nullish(),
+  "idDocumentName": zod.string().max(submitResidentApplicationBodyIdDocumentNameMax).nullish(),
+  "idDocumentMimeType": zod.string().max(submitResidentApplicationBodyIdDocumentMimeTypeMax).nullish(),
   "livesInSalamaPark": zod.boolean(),
   "residencyStatus": zod.enum(['owner-occupier', 'tenant', 'owner-landlord', 'family-member']),
   "residencySince": zod.string().min(submitResidentApplicationBodyResidencySinceMin).max(submitResidentApplicationBodyResidencySinceMax),

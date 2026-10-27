@@ -71,6 +71,21 @@ export interface ResidentApplicationInput {
      * @nullable
      */
   plotNumber?: string | null;
+  /**
+     * @maxLength 8000000
+     * @nullable
+     */
+  idDocumentDataUrl?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  idDocumentName?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  idDocumentMimeType?: string | null;
   livesInSalamaPark: boolean;
   residencyStatus: ResidentApplicationInputResidencyStatus;
   /**
