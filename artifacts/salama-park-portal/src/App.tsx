@@ -44,8 +44,7 @@ import {
   useDeleteAdminFinanceExpense,
   useGetMySubscription, getGetMySubscriptionQueryKey,
 } from '@workspace/api-client-react';
-// @ts-ignore
-import { customFetch } from '@workspace/api-client-react/custom-fetch';
+import { customFetch } from '@workspace/api-client-react';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
   ArrowRight, ArrowUpRight, BadgeCheck, ChevronDown, ClipboardCheck, FileText, Info, Landmark, LockKeyhole,
