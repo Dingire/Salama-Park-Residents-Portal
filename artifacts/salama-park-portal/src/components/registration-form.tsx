@@ -74,9 +74,23 @@ type FormState = {
   houseNumber: string;
   streetOrZone: string;
   plotNumber: string;
+  // Legacy / identity
   idDocumentDataUrl: string;
   idDocumentName: string;
   idDocumentMimeType: string;
+  // Required documents
+  identityDocumentDataUrl: string;
+  identityDocumentName: string;
+  identityDocumentMimeType: string;
+  proofOfResidenceDataUrl: string;
+  proofOfResidenceName: string;
+  proofOfResidenceMimeType: string;
+  passportPhotoDataUrl: string;
+  passportPhotoName: string;
+  passportPhotoMimeType: string;
+  proofOfTenureDataUrl: string;
+  proofOfTenureName: string;
+  proofOfTenureMimeType: string;
   // B — Residency
   livesInSalamaPark: 'yes' | 'no';
   residencyStatus:
@@ -136,6 +150,18 @@ const initialState: FormState = {
   idDocumentDataUrl: '',
   idDocumentName: '',
   idDocumentMimeType: '',
+  identityDocumentDataUrl: '',
+  identityDocumentName: '',
+  identityDocumentMimeType: '',
+  proofOfResidenceDataUrl: '',
+  proofOfResidenceName: '',
+  proofOfResidenceMimeType: '',
+  passportPhotoDataUrl: '',
+  passportPhotoName: '',
+  passportPhotoMimeType: '',
+  proofOfTenureDataUrl: '',
+  proofOfTenureName: '',
+  proofOfTenureMimeType: '',
   livesInSalamaPark: 'yes',
   residencyStatus: '',
   residencySince: '',
@@ -204,6 +230,30 @@ export function RegistrationForm({
     if (!form.nrcNumber.trim() && !form.passportNumber.trim()) {
       setLocalError(
         'Enter your NRC number, or your passport number if you do not hold an NRC.',
+      );
+      return;
+    }
+    const identityDoc =
+      form.identityDocumentDataUrl || form.idDocumentDataUrl;
+    if (!identityDoc) {
+      setLocalError(
+        'Upload your NRC copy (or passport bio-data page for foreigners) as your identity document.',
+      );
+      return;
+    }
+    if (!form.proofOfResidenceDataUrl) {
+      setLocalError(
+        'Upload proof of residence (utility bill / lease / title deed).',
+      );
+      return;
+    }
+    if (!form.passportPhotoDataUrl) {
+      setLocalError('Upload a passport-size photograph.');
+      return;
+    }
+    if (!form.proofOfTenureDataUrl) {
+      setLocalError(
+        'Upload your title deed or tenancy agreement (depending on residency status).',
       );
       return;
     }
@@ -291,9 +341,21 @@ export function RegistrationForm({
       houseNumber: form.houseNumber.trim(),
       streetOrZone: form.streetOrZone.trim(),
       plotNumber: form.plotNumber.trim() || null,
-      idDocumentDataUrl: form.idDocumentDataUrl || null,
-      idDocumentName: form.idDocumentName || null,
-      idDocumentMimeType: form.idDocumentMimeType || null,
+      idDocumentDataUrl: form.idDocumentDataUrl || form.identityDocumentDataUrl || null,
+      idDocumentName: form.idDocumentName || form.identityDocumentName || null,
+      idDocumentMimeType: form.idDocumentMimeType || form.identityDocumentMimeType || null,
+      identityDocumentDataUrl: form.identityDocumentDataUrl || form.idDocumentDataUrl || null,
+      identityDocumentName: form.identityDocumentName || form.idDocumentName || null,
+      identityDocumentMimeType: form.identityDocumentMimeType || form.idDocumentMimeType || null,
+      proofOfResidenceDataUrl: form.proofOfResidenceDataUrl || null,
+      proofOfResidenceName: form.proofOfResidenceName || null,
+      proofOfResidenceMimeType: form.proofOfResidenceMimeType || null,
+      passportPhotoDataUrl: form.passportPhotoDataUrl || null,
+      passportPhotoName: form.passportPhotoName || null,
+      passportPhotoMimeType: form.passportPhotoMimeType || null,
+      proofOfTenureDataUrl: form.proofOfTenureDataUrl || null,
+      proofOfTenureName: form.proofOfTenureName || null,
+      proofOfTenureMimeType: form.proofOfTenureMimeType || null,
       livesInSalamaPark: form.livesInSalamaPark === 'yes',
       residencyStatus: form.residencyStatus as
         | 'owner-occupier'
@@ -397,21 +459,29 @@ export function RegistrationForm({
             hint="Type the date as numbers (YYYY-MM-DD), e.g. 1985-06-12."
           />
           <div className="rounded-xl border border-[#e1dfd8] p-4">
-            <p className="text-sm font-medium text-[#35485c]">ID / NRC document (for verification)</p>
+            <p className="text-sm font-medium text-[#35485c]">NRC or passport (identity) *</p>
             <p className="mt-1 text-xs leading-5 text-[#87918e]">
-              Upload a photo of your NRC (or passport) to help the association verify your application. JPG, PNG or WebP,
-              up to ~3MB.
+              Upload a copy of your NRC or passport bio-data page (for foreigners). JPG, PNG, WebP or PDF, up to ~3MB.
             </p>
-            {form.idDocumentDataUrl ? (
+            {(form.identityDocumentDataUrl || form.idDocumentDataUrl) ? (
               <div className="mt-3 space-y-2">
-                <img
-                  src={form.idDocumentDataUrl}
-                  alt={form.idDocumentName || 'ID document'}
-                  className="max-h-64 rounded-lg border border-[#e1dfd8]"
-                />
+                {(form.identityDocumentDataUrl || form.idDocumentDataUrl)?.startsWith('data:image') ? (
+                  <img
+                    src={form.identityDocumentDataUrl || form.idDocumentDataUrl}
+                    alt={form.identityDocumentName || form.idDocumentName || 'Identity document'}
+                    className="max-h-64 rounded-lg border border-[#e1dfd8]"
+                  />
+                ) : (
+                  <div className="rounded-lg border border-[#e1dfd8] px-3 py-2 text-xs text-[#47566a]">
+                    {form.identityDocumentName || form.idDocumentName || 'Document uploaded'}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => {
+                    update('identityDocumentDataUrl', '');
+                    update('identityDocumentName', '');
+                    update('identityDocumentMimeType', '');
                     update('idDocumentDataUrl', '');
                     update('idDocumentName', '');
                     update('idDocumentMimeType', '');
@@ -424,20 +494,23 @@ export function RegistrationForm({
             ) : (
               <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#cfd5cd] px-4 py-3 text-sm text-[#47566a] hover:bg-[#f7f7f4]">
                 <FileUp size={16} />
-                Upload ID photo
+                Upload identity document
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     if (file.size > 3 * 1024 * 1024) {
-                      alert('File too large. Please upload an image under 3MB.');
+                      alert('File too large. Please upload an image or PDF under 3MB.');
                       return;
                     }
                     const reader = new FileReader();
                     reader.onload = () => {
+                      update('identityDocumentDataUrl', String(reader.result));
+                      update('identityDocumentName', file.name);
+                      update('identityDocumentMimeType', file.type);
                       update('idDocumentDataUrl', String(reader.result));
                       update('idDocumentName', file.name);
                       update('idDocumentMimeType', file.type);
@@ -479,6 +552,171 @@ export function RegistrationForm({
             value={form.email}
             onChange={(v) => update('email', v)}
           />
+          <div className="rounded-xl border border-[#e1dfd8] p-4">
+            <p className="text-sm font-medium text-[#35485c]">Proof of residence *</p>
+            <p className="mt-1 text-xs leading-5 text-[#87918e]">
+              Utility bill, lease agreement, or title deed. JPG, PNG, WebP or PDF, up to ~3MB.
+            </p>
+            {form.proofOfResidenceDataUrl ? (
+              <div className="mt-3 space-y-2">
+                {form.proofOfResidenceDataUrl.startsWith('data:image') ? (
+                  <img
+                    src={form.proofOfResidenceDataUrl}
+                    alt={form.proofOfResidenceName || 'Proof of residence'}
+                    className="max-h-64 rounded-lg border border-[#e1dfd8]"
+                  />
+                ) : (
+                  <div className="rounded-lg border border-[#e1dfd8] px-3 py-2 text-xs text-[#47566a]">
+                    {form.proofOfResidenceName || 'Document uploaded'}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    update('proofOfResidenceDataUrl', '');
+                    update('proofOfResidenceName', '');
+                    update('proofOfResidenceMimeType', '');
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-[#8a3737]"
+                >
+                  <X size={14} /> Remove document
+                </button>
+              </div>
+            ) : (
+              <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#cfd5cd] px-4 py-3 text-sm text-[#47566a] hover:bg-[#f7f7f4]">
+                <FileUp size={16} />
+                Upload proof of residence
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 3 * 1024 * 1024) {
+                      alert('File too large. Please upload an image or PDF under 3MB.');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      update('proofOfResidenceDataUrl', String(reader.result));
+                      update('proofOfResidenceName', file.name);
+                      update('proofOfResidenceMimeType', file.type);
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          <div className="rounded-xl border border-[#e1dfd8] p-4">
+            <p className="text-sm font-medium text-[#35485c]">Passport-size photograph *</p>
+            <p className="mt-1 text-xs leading-5 text-[#87918e]">
+              Recent passport-size photo. JPG, PNG or WebP, up to ~3MB.
+            </p>
+            {form.passportPhotoDataUrl ? (
+              <div className="mt-3 space-y-2">
+                <img
+                  src={form.passportPhotoDataUrl}
+                  alt={form.passportPhotoName || 'Passport photo'}
+                  className="max-h-64 rounded-lg border border-[#e1dfd8]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    update('passportPhotoDataUrl', '');
+                    update('passportPhotoName', '');
+                    update('passportPhotoMimeType', '');
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-[#8a3737]"
+                >
+                  <X size={14} /> Remove photo
+                </button>
+              </div>
+            ) : (
+              <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#cfd5cd] px-4 py-3 text-sm text-[#47566a] hover:bg-[#f7f7f4]">
+                <Camera size={16} />
+                Upload passport photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 3 * 1024 * 1024) {
+                      alert('File too large. Please upload an image under 3MB.');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      update('passportPhotoDataUrl', String(reader.result));
+                      update('passportPhotoName', file.name);
+                      update('passportPhotoMimeType', file.type);
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          <div className="rounded-xl border border-[#e1dfd8] p-4">
+            <p className="text-sm font-medium text-[#35485c]">Title deed or tenancy agreement *</p>
+            <p className="mt-1 text-xs leading-5 text-[#87918e]">
+              Upload title deed or tenancy agreement depending on residency status. JPG, PNG, WebP or PDF, up to ~3MB.
+            </p>
+            {form.proofOfTenureDataUrl ? (
+              <div className="mt-3 space-y-2">
+                {form.proofOfTenureDataUrl.startsWith('data:image') ? (
+                  <img
+                    src={form.proofOfTenureDataUrl}
+                    alt={form.proofOfTenureName || 'Title deed or tenancy agreement'}
+                    className="max-h-64 rounded-lg border border-[#e1dfd8]"
+                  />
+                ) : (
+                  <div className="rounded-lg border border-[#e1dfd8] px-3 py-2 text-xs text-[#47566a]">
+                    {form.proofOfTenureName || 'Document uploaded'}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    update('proofOfTenureDataUrl', '');
+                    update('proofOfTenureName', '');
+                    update('proofOfTenureMimeType', '');
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-[#8a3737]"
+                >
+                  <X size={14} /> Remove document
+                </button>
+              </div>
+            ) : (
+              <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[#cfd5cd] px-4 py-3 text-sm text-[#47566a] hover:bg-[#f7f7f4]">
+                <FileUp size={16} />
+                Upload title deed/tenancy
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 3 * 1024 * 1024) {
+                      alert('File too large. Please upload an image or PDF under 3MB.');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      update('proofOfTenureDataUrl', String(reader.result));
+                      update('proofOfTenureName', file.name);
+                      update('proofOfTenureMimeType', file.type);
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            )}
+          </div>
           <TextField
             label="House number"
             required

@@ -164,6 +164,30 @@ export const submitResidentApplicationBodyIdDocumentNameMax = 160;
 
 export const submitResidentApplicationBodyIdDocumentMimeTypeMax = 80;
 
+export const submitResidentApplicationBodyIdentityDocumentDataUrlMax = 8000000;
+
+export const submitResidentApplicationBodyIdentityDocumentNameMax = 160;
+
+export const submitResidentApplicationBodyIdentityDocumentMimeTypeMax = 80;
+
+export const submitResidentApplicationBodyProofOfResidenceDataUrlMax = 8000000;
+
+export const submitResidentApplicationBodyProofOfResidenceNameMax = 160;
+
+export const submitResidentApplicationBodyProofOfResidenceMimeTypeMax = 80;
+
+export const submitResidentApplicationBodyPassportPhotoDataUrlMax = 8000000;
+
+export const submitResidentApplicationBodyPassportPhotoNameMax = 160;
+
+export const submitResidentApplicationBodyPassportPhotoMimeTypeMax = 80;
+
+export const submitResidentApplicationBodyProofOfTenureDataUrlMax = 8000000;
+
+export const submitResidentApplicationBodyProofOfTenureNameMax = 160;
+
+export const submitResidentApplicationBodyProofOfTenureMimeTypeMax = 80;
+
 export const submitResidentApplicationBodyResidencySinceMin = 4;
 export const submitResidentApplicationBodyResidencySinceMax = 32;
 
@@ -212,6 +236,18 @@ export const SubmitResidentApplicationBody = zod.object({
   "idDocumentDataUrl": zod.string().max(submitResidentApplicationBodyIdDocumentDataUrlMax).nullish(),
   "idDocumentName": zod.string().max(submitResidentApplicationBodyIdDocumentNameMax).nullish(),
   "idDocumentMimeType": zod.string().max(submitResidentApplicationBodyIdDocumentMimeTypeMax).nullish(),
+  "identityDocumentDataUrl": zod.string().max(submitResidentApplicationBodyIdentityDocumentDataUrlMax).nullish(),
+  "identityDocumentName": zod.string().max(submitResidentApplicationBodyIdentityDocumentNameMax).nullish(),
+  "identityDocumentMimeType": zod.string().max(submitResidentApplicationBodyIdentityDocumentMimeTypeMax).nullish(),
+  "proofOfResidenceDataUrl": zod.string().max(submitResidentApplicationBodyProofOfResidenceDataUrlMax).nullish(),
+  "proofOfResidenceName": zod.string().max(submitResidentApplicationBodyProofOfResidenceNameMax).nullish(),
+  "proofOfResidenceMimeType": zod.string().max(submitResidentApplicationBodyProofOfResidenceMimeTypeMax).nullish(),
+  "passportPhotoDataUrl": zod.string().max(submitResidentApplicationBodyPassportPhotoDataUrlMax).nullish(),
+  "passportPhotoName": zod.string().max(submitResidentApplicationBodyPassportPhotoNameMax).nullish(),
+  "passportPhotoMimeType": zod.string().max(submitResidentApplicationBodyPassportPhotoMimeTypeMax).nullish(),
+  "proofOfTenureDataUrl": zod.string().max(submitResidentApplicationBodyProofOfTenureDataUrlMax).nullish(),
+  "proofOfTenureName": zod.string().max(submitResidentApplicationBodyProofOfTenureNameMax).nullish(),
+  "proofOfTenureMimeType": zod.string().max(submitResidentApplicationBodyProofOfTenureMimeTypeMax).nullish(),
   "livesInSalamaPark": zod.boolean(),
   "residencyStatus": zod.enum(['owner-occupier', 'tenant', 'owner-landlord', 'family-member']),
   "residencySince": zod.string().min(submitResidentApplicationBodyResidencySinceMin).max(submitResidentApplicationBodyResidencySinceMax),

@@ -1066,6 +1066,19 @@ components:
         idDocumentDataUrl: { type: ["string", "null"], maxLength: 8000000 }
         idDocumentName: { type: ["string", "null"], maxLength: 160 }
         idDocumentMimeType: { type: ["string", "null"], maxLength: 80 }
+        # Supporting documents (verification)
+        identityDocumentDataUrl: { type: ["string", "null"], maxLength: 8000000 }
+        identityDocumentName: { type: ["string", "null"], maxLength: 160 }
+        identityDocumentMimeType: { type: ["string", "null"], maxLength: 80 }
+        proofOfResidenceDataUrl: { type: ["string", "null"], maxLength: 8000000 }
+        proofOfResidenceName: { type: ["string", "null"], maxLength: 160 }
+        proofOfResidenceMimeType: { type: ["string", "null"], maxLength: 80 }
+        passportPhotoDataUrl: { type: ["string", "null"], maxLength: 8000000 }
+        passportPhotoName: { type: ["string", "null"], maxLength: 160 }
+        passportPhotoMimeType: { type: ["string", "null"], maxLength: 80 }
+        proofOfTenureDataUrl: { type: ["string", "null"], maxLength: 8000000 }
+        proofOfTenureName: { type: ["string", "null"], maxLength: 160 }
+        proofOfTenureMimeType: { type: ["string", "null"], maxLength: 80 }
         # Section B — Residency
         livesInSalamaPark: { type: boolean }
         residencyStatus:

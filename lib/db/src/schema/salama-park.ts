@@ -1,4 +1,4 @@
-import {
+﻿import {
   boolean,
   index,
   integer,
@@ -149,7 +149,7 @@ export const membershipApplicationsTable = pgTable(
       .notNull()
       .default("pending-verification"),
     livesInSalamaPark: boolean("lives_in_salama_park").notNull(),
-    // Section A — Personal identification
+    // Section A ΓÇö Personal identification
     nrcNumber: text("nrc_number"),
     passportNumber: text("passport_number"),
     dateOfBirth: text("date_of_birth"),
@@ -157,28 +157,28 @@ export const membershipApplicationsTable = pgTable(
     nationality: text("nationality"),
     phoneAlt: text("phone_alt"),
     plotNumber: text("plot_number"),
-    // Section A — Identity document (for verification)
+    // Section A ΓÇö Identity document (for verification)
     idDocumentDataUrl: text("id_document_data_url"),
     idDocumentName: text("id_document_name"),
     idDocumentMimeType: text("id_document_mime_type"),
-    // Section B — Residency
+    // Section B ΓÇö Residency
     residencyStatus: residencyStatus("residency_status"),
     residencySince: text("residency_since"),
     ownsProperty: boolean("owns_property").notNull().default(false),
     propertyPlots: text("property_plots"),
     wardRegisteredVoter: boolean("ward_registered_voter"),
-    // Section C — Membership category
+    // Section C ΓÇö Membership category
     membershipCategory: membershipCategory("membership_category"),
     admittedAt: timestamp("admitted_at", { withTimezone: true }),
     membershipNumber: text("membership_number"),
     otherAssociationMember: boolean("other_association_member"),
     otherAssociationName: text("other_association_name"),
-    // Section D — Subscription poll
+    // Section D ΓÇö Subscription poll
     subscriptionVote: subscriptionVote("subscription_vote"),
     agreeToPayAdopted: boolean("agree_to_pay_adopted").notNull().default(false),
     reliefOption: reliefOption("relief_option"),
     paymentMethod: paymentMethod("payment_method"),
-    // Section E — Declarations and signature
+    // Section E ΓÇö Declarations and signature
     declarationConfirmResident: boolean("declaration_confirm_resident")
       .notNull()
       .default(false),
@@ -204,16 +204,16 @@ export const membershipApplicationsTable = pgTable(
       .notNull()
       .default(false),
     signatureName: text("signature_name"),
-    // Section F — Verification (association officials only)
+    // Section F ΓÇö Verification (association officials only)
     receivedBy: text("received_by"),
     verifiedAgainstNrc: boolean("verified_against_nrc"),
     rejectionCategory: applicationRejectionCategory("rejection_category"),
     verificationNotes: text("verification_notes"),
-    // Section G — Associate and honorary members
+    // Section G ΓÇö Associate and honorary members
     principalResidenceAddress: text("principal_residence_address"),
     associationBasis: text("association_basis"),
     nominatedBy: text("nominated_by"),
-    // Section H — Optional planning and skills
+    // Section H ΓÇö Optional planning and skills
     occupation: text("occupation"),
     willingToVolunteer: boolean("willing_to_volunteer").notNull().default(false),
     volunteerSkills: text("volunteer_skills"),
@@ -227,6 +227,19 @@ export const membershipApplicationsTable = pgTable(
     privacyNoticeAcceptedAt: timestamp("privacy_notice_accepted_at", {
       withTimezone: true,
     }).notNull(),
+    // Supporting documents
+    identityDocumentDataUrl: text("identity_document_data_url"),
+    identityDocumentName: text("identity_document_name"),
+    identityDocumentMimeType: text("identity_document_mime_type"),
+    proofOfResidenceDataUrl: text("proof_of_residence_data_url"),
+    proofOfResidenceName: text("proof_of_residence_name"),
+    proofOfResidenceMimeType: text("proof_of_residence_mime_type"),
+    passportPhotoDataUrl: text("passport_photo_data_url"),
+    passportPhotoName: text("passport_photo_name"),
+    passportPhotoMimeType: text("passport_photo_mime_type"),
+    proofOfTenureDataUrl: text("proof_of_tenure_data_url"),
+    proofOfTenureName: text("proof_of_tenure_name"),
+    proofOfTenureMimeType: text("proof_of_tenure_mime_type"),
     decisionReason: text("decision_reason"),
     reviewedBy: text("reviewed_by"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -413,7 +426,7 @@ export const auditLogsTable = pgTable(
 ).enableRLS();
 
 /* -------------------------------------------------------------------------- *
- * Finance — subscriptions, payments and expenses.
+ * Finance ΓÇö subscriptions, payments and expenses.
  *
  * All money is stored in minor units (ngwee) as a plain integer, never a
  * decimal or float, so totals are exact. A value of 10000 is K100.00.

@@ -44,9 +44,11 @@ import {
   useDeleteAdminFinanceExpense,
   useGetMySubscription, getGetMySubscriptionQueryKey,
 } from '@workspace/api-client-react';
+// @ts-ignore
+import { customFetch } from '@workspace/api-client-react/custom-fetch';
 import type { ResidentApplicationInput } from '@workspace/api-client-react';
 import {
-  ArrowRight, ArrowUpRight, BadgeCheck, ChevronDown, ClipboardCheck, FileText, Landmark, LockKeyhole,
+  ArrowRight, ArrowUpRight, BadgeCheck, ChevronDown, ClipboardCheck, FileText, Info, Landmark, LockKeyhole,
   Map as MapIcon, Menu, ShieldCheck, UserRound, X,
 } from 'lucide-react';
 import { Link, Redirect, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
@@ -335,13 +337,82 @@ function ApplicationPage() {
   const appQuery = useGetMyResidentApplication({ query: { enabled: isSignedIn, queryKey: getGetMyResidentApplicationQueryKey() } });
   const submit = useSubmitResidentApplication();
   const [localError, setLocalError] = useState('');
+  const [docError, setDocError] = useState('');
+  const [docSuccess, setDocSuccess] = useState(false);
+  const [docUploading, setDocUploading] = useState(false);
+  const [docs, setDocs] = useState({
+    identityDocumentDataUrl: '', identityDocumentName: '', identityDocumentMimeType: '',
+    proofOfResidenceDataUrl: '', proofOfResidenceName: '', proofOfResidenceMimeType: '',
+    passportPhotoDataUrl: '', passportPhotoName: '', passportPhotoMimeType: '',
+    proofOfTenureDataUrl: '', proofOfTenureName: '', proofOfTenureMimeType: '',
+    idDocumentDataUrl: '', idDocumentName: '', idDocumentMimeType: '',
+  });
   const onSubmit = (payload: ResidentApplicationInput) => {
     setLocalError('');
     submit.mutate({data: payload}, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetMyResidentApplicationQueryKey() }); }, onError: (error) => setLocalError(serverErrorMessage(error, 'Your application could not be submitted. Please try again.')) });
   };
-  const application = appQuery.data?.application;
+  const application = appQuery.data?.application as any;
+  const hasMissingDocs = application ? (
+    !(application.identityDocumentDataUrl || application.idDocumentDataUrl) ||
+    !application.proofOfResidenceDataUrl ||
+    !application.passportPhotoDataUrl ||
+    !application.proofOfTenureDataUrl
+  ) : false;
+  const uploadFile = (field: string, file: File, setName: string, setUrl: string, setMime: string) => {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { alert('File too large. Please upload under 3MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDocs((d:any) => ({ ...d, [setUrl]: String(reader.result), [setName]: file.name, [setMime]: file.type }));
+    };
+    reader.readAsDataURL(file);
+  };
+  const saveDocs = async () => {
+    setDocError(''); setDocSuccess(false);
+    if (!(docs.identityDocumentDataUrl || docs.idDocumentDataUrl)) { setDocError('Upload identity document (NRC or passport bio-data page).'); return; }
+    if (!docs.proofOfResidenceDataUrl) { setDocError('Upload proof of residence.'); return; }
+    if (!docs.passportPhotoDataUrl) { setDocError('Upload passport photo.'); return; }
+    if (!docs.proofOfTenureDataUrl) { setDocError('Upload title deed or tenancy agreement.'); return; }
+    setDocUploading(true);
+    try {
+      await customFetch('/api/resident/application/documents', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        identityDocumentDataUrl: docs.identityDocumentDataUrl || docs.idDocumentDataUrl || null,
+        identityDocumentName: docs.identityDocumentName || docs.idDocumentName || null,
+        identityDocumentMimeType: docs.identityDocumentMimeType || docs.idDocumentMimeType || null,
+        proofOfResidenceDataUrl: docs.proofOfResidenceDataUrl || null,
+        proofOfResidenceName: docs.proofOfResidenceName || null,
+        proofOfResidenceMimeType: docs.proofOfResidenceMimeType || null,
+        passportPhotoDataUrl: docs.passportPhotoDataUrl || null,
+        passportPhotoName: docs.passportPhotoName || null,
+        passportPhotoMimeType: docs.passportPhotoMimeType || null,
+        proofOfTenureDataUrl: docs.proofOfTenureDataUrl || null,
+        proofOfTenureName: docs.proofOfTenureName || null,
+        proofOfTenureMimeType: docs.proofOfTenureMimeType || null,
+        idDocumentDataUrl: docs.idDocumentDataUrl || docs.identityDocumentDataUrl || null,
+        idDocumentName: docs.idDocumentName || docs.identityDocumentName || null,
+        idDocumentMimeType: docs.idDocumentMimeType || docs.identityDocumentMimeType || null,
+      }) });
+      setDocSuccess(true);
+      queryClient.invalidateQueries({ queryKey: getGetMyResidentApplicationQueryKey() });
+    } catch (e:any) {
+      setDocError(serverErrorMessage(e, 'Failed to upload documents.'));
+    } finally {
+      setDocUploading(false);
+    }
+  };
   return <ResidentLayout heading="Membership application" description="Complete the association's registration form for review."><div className="grid gap-7 lg:grid-cols-[1fr_320px]"><div>
     {appQuery.isLoading ? <Skeleton rows={2} /> : appQuery.isError ? <ErrorLine retry={() => appQuery.refetch()} /> : application ? <div className="mb-6 rounded-2xl border border-[#dce5db] bg-[#f1f5ef] p-5"><div className="flex items-center gap-2 text-sm font-semibold text-[#315f43]"><BadgeCheck size={17} />Application received · {application.status}</div><p className="mt-2 text-sm text-[#657184]">Reference {application.reference}. Your application is not an automatic membership verification.</p>{application.subscriptionVote && <p className="mt-1 text-sm text-[#657184]">Subscription choice recorded: {application.subscriptionVote.toUpperCase()} per month.</p>}</div> : null}
+    {application && hasMissingDocs && <div className="mb-6 rounded-2xl border border-[#f0d9b8] bg-[#fdf7ed] p-5"><div className="flex items-center gap-2 text-sm font-semibold text-[#8a6a2a]"><Info size={17} />Missing required documents</div><p className="mt-2 text-sm text-[#7a6740]">Please upload the following: 1) NRC copy or passport bio-data page, 2) Proof of residence (utility bill/lease/title deed), 3) Passport-size photograph, 4) Title deed or tenancy agreement. You can upload them below.</p></div>}
+    {application && <div className="mb-6 rounded-2xl border border-[#e1dfd8] bg-white p-6"><h2 className="font-semibold text-[#1b2e45]">Upload or update documents</h2><p className="mt-2 text-sm leading-6 text-[#657184]">Upload your documents as base64 files (JPG, PNG, WebP, or PDF, up to 3MB each).</p><div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="rounded-xl border border-[#e1dfd8] p-4"><p className="text-sm font-medium text-[#35485c]">NRC or passport bio-data page *</p><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) uploadFile('id',f,'identityDocumentName','identityDocumentDataUrl','identityDocumentMimeType');}} className="mt-2 text-xs"/>{(docs.identityDocumentDataUrl||docs.idDocumentDataUrl) && <p className="mt-1 text-xs text-[#527b5c]">Selected</p>}</div>
+      <div className="rounded-xl border border-[#e1dfd8] p-4"><p className="text-sm font-medium text-[#35485c]">Proof of residence *</p><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) uploadFile('por',f,'proofOfResidenceName','proofOfResidenceDataUrl','proofOfResidenceMimeType');}} className="mt-2 text-xs"/>{docs.proofOfResidenceDataUrl && <p className="mt-1 text-xs text-[#527b5c]">Selected</p>}</div>
+      <div className="rounded-xl border border-[#e1dfd8] p-4"><p className="text-sm font-medium text-[#35485c]">Passport-size photograph *</p><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e)=>{const f=e.target.files?.[0]; if(f) uploadFile('pp',f,'passportPhotoName','passportPhotoDataUrl','passportPhotoMimeType');}} className="mt-2 text-xs"/>{docs.passportPhotoDataUrl && <p className="mt-1 text-xs text-[#527b5c]">Selected</p>}</div>
+      <div className="rounded-xl border border-[#e1dfd8] p-4"><p className="text-sm font-medium text-[#35485c]">Title deed or tenancy agreement *</p><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e)=>{const f=e.target.files?.[0]; if(f) uploadFile('pot',f,'proofOfTenureName','proofOfTenureDataUrl','proofOfTenureMimeType');}} className="mt-2 text-xs"/>{docs.proofOfTenureDataUrl && <p className="mt-1 text-xs text-[#527b5c]">Selected</p>}</div>
+    </div>
+    {docError && <div className="mt-3"><Notice kind="error">{docError}</Notice></div>}
+    {docSuccess && <div className="mt-3"><Notice kind="success">Documents updated successfully.</Notice></div>}
+    <button onClick={saveDocs} disabled={docUploading} className="btn-primary mt-4 disabled:cursor-not-allowed disabled:opacity-55">{docUploading ? 'Saving…' : 'Save documents'}</button>
+    </div>}
     {!application && <div>
       <div className="mb-5 rounded-2xl border border-[#e1dfd8] bg-white p-6"><h2 className="serif text-2xl font-bold text-[#1d3048]">Registration form</h2><p className="mt-2 text-sm leading-6 text-[#687486]">This form follows the association's registration record (Sections A–H). Required fields must be completed. Optional planning questions are never used to exclude anyone.</p></div>
       <RegistrationForm isPending={submit.isPending} onSubmit={onSubmit} />

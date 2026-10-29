@@ -245,6 +245,66 @@ export interface ResidentApplicationInput {
      * @nullable
      */
   idDocumentMimeType?: string | null;
+  /**
+     * @maxLength 8000000
+     * @nullable
+     */
+  identityDocumentDataUrl?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  identityDocumentName?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  identityDocumentMimeType?: string | null;
+  /**
+     * @maxLength 8000000
+     * @nullable
+     */
+  proofOfResidenceDataUrl?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  proofOfResidenceName?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  proofOfResidenceMimeType?: string | null;
+  /**
+     * @maxLength 8000000
+     * @nullable
+     */
+  passportPhotoDataUrl?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  passportPhotoName?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  passportPhotoMimeType?: string | null;
+  /**
+     * @maxLength 8000000
+     * @nullable
+     */
+  proofOfTenureDataUrl?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  proofOfTenureName?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  proofOfTenureMimeType?: string | null;
   livesInSalamaPark: boolean;
   residencyStatus: ResidentApplicationInputResidencyStatus;
   /**

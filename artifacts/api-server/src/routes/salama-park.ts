@@ -432,6 +432,144 @@ router.get("/resident/application/me", async (req, res): Promise<void> => {
   res.json(GetMyResidentApplicationResponse.parse({ application: application ?? null }));
 });
 
+router.put("/resident/application/documents", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+
+  const [application] = await db
+    .select({
+      id: membershipApplicationsTable.id,
+    })
+    .from(membershipApplicationsTable)
+    .where(eq(membershipApplicationsTable.userId, userId))
+    .limit(1);
+
+  if (!application) {
+    res.status(404).json({ error: "Membership application not found." });
+    return;
+  }
+
+  const update: Record<string, unknown> = { updatedAt: new Date() };
+
+  if ("identityDocumentDataUrl" in body)
+    update.identityDocumentDataUrl =
+      body.identityDocumentDataUrl === null || body.identityDocumentDataUrl === undefined
+        ? null
+        : String(body.identityDocumentDataUrl);
+  if ("identityDocumentName" in body)
+    update.identityDocumentName =
+      body.identityDocumentName === null || body.identityDocumentName === undefined
+        ? null
+        : String(body.identityDocumentName);
+  if ("identityDocumentMimeType" in body)
+    update.identityDocumentMimeType =
+      body.identityDocumentMimeType === null || body.identityDocumentMimeType === undefined
+        ? null
+        : String(body.identityDocumentMimeType);
+
+  if ("proofOfResidenceDataUrl" in body)
+    update.proofOfResidenceDataUrl =
+      body.proofOfResidenceDataUrl === null || body.proofOfResidenceDataUrl === undefined
+        ? null
+        : String(body.proofOfResidenceDataUrl);
+  if ("proofOfResidenceName" in body)
+    update.proofOfResidenceName =
+      body.proofOfResidenceName === null || body.proofOfResidenceName === undefined
+        ? null
+        : String(body.proofOfResidenceName);
+  if ("proofOfResidenceMimeType" in body)
+    update.proofOfResidenceMimeType =
+      body.proofOfResidenceMimeType === null || body.proofOfResidenceMimeType === undefined
+        ? null
+        : String(body.proofOfResidenceMimeType);
+
+  if ("passportPhotoDataUrl" in body)
+    update.passportPhotoDataUrl =
+      body.passportPhotoDataUrl === null || body.passportPhotoDataUrl === undefined
+        ? null
+        : String(body.passportPhotoDataUrl);
+  if ("passportPhotoName" in body)
+    update.passportPhotoName =
+      body.passportPhotoName === null || body.passportPhotoName === undefined
+        ? null
+        : String(body.passportPhotoName);
+  if ("passportPhotoMimeType" in body)
+    update.passportPhotoMimeType =
+      body.passportPhotoMimeType === null || body.passportPhotoMimeType === undefined
+        ? null
+        : String(body.passportPhotoMimeType);
+
+  if ("proofOfTenureDataUrl" in body)
+    update.proofOfTenureDataUrl =
+      body.proofOfTenureDataUrl === null || body.proofOfTenureDataUrl === undefined
+        ? null
+        : String(body.proofOfTenureDataUrl);
+  if ("proofOfTenureName" in body)
+    update.proofOfTenureName =
+      body.proofOfTenureName === null || body.proofOfTenureName === undefined
+        ? null
+        : String(body.proofOfTenureName);
+  if ("proofOfTenureMimeType" in body)
+    update.proofOfTenureMimeType =
+      body.proofOfTenureMimeType === null || body.proofOfTenureMimeType === undefined
+        ? null
+        : String(body.proofOfTenureMimeType);
+
+  if ("idDocumentDataUrl" in body)
+    update.idDocumentDataUrl =
+      body.idDocumentDataUrl === null || body.idDocumentDataUrl === undefined
+        ? null
+        : String(body.idDocumentDataUrl);
+  if ("idDocumentName" in body)
+    update.idDocumentName =
+      body.idDocumentName === null || body.idDocumentName === undefined
+        ? null
+        : String(body.idDocumentName);
+  if ("idDocumentMimeType" in body)
+    update.idDocumentMimeType =
+      body.idDocumentMimeType === null || body.idDocumentMimeType === undefined
+        ? null
+        : String(body.idDocumentMimeType);
+
+  if (Object.keys(update).length <= 1) {
+    res.status(400).json({ error: "No document updates provided." });
+    return;
+  }
+
+  await db
+    .update(membershipApplicationsTable)
+    .set(update)
+    .where(eq(membershipApplicationsTable.userId, userId));
+
+  await db.insert(auditLogsTable).values({
+    actorUserId: userId,
+    action: "membership.application.documents.updated",
+    recordType: "membership_application",
+    recordId: application.id,
+    metadata: JSON.stringify({ updatedAt: update.updatedAt }),
+  });
+
+  const [status] = await db
+    .select({
+      reference: membershipApplicationsTable.reference,
+      status: membershipApplicationsTable.status,
+      submittedAt: membershipApplicationsTable.submittedAt,
+      subscriptionVote: membershipApplicationsTable.subscriptionVote,
+    })
+    .from(membershipApplicationsTable)
+    .where(eq(membershipApplicationsTable.userId, userId))
+    .limit(1);
+
+  if (!status) {
+    res.status(404).json({ error: "Membership application not found." });
+    return;
+  }
+
+  res.json({ application: status });
+});
+
 router.post("/resident/application", async (req, res): Promise<void> => {
   const userId = await requireUserId(req, res);
   if (!userId) return;
@@ -615,6 +753,18 @@ router.post("/resident/application", async (req, res): Promise<void> => {
           emergencyContactRelationship: emergencyContactRelationship || null,
           preferredNotification: input.preferredNotification,
           privacyNoticeAcceptedAt: submittedAt,
+          identityDocumentDataUrl: input.identityDocumentDataUrl ?? input.idDocumentDataUrl ?? null,
+          identityDocumentName: input.identityDocumentName ?? input.idDocumentName ?? null,
+          identityDocumentMimeType: input.identityDocumentMimeType ?? input.idDocumentMimeType ?? null,
+          proofOfResidenceDataUrl: input.proofOfResidenceDataUrl ?? null,
+          proofOfResidenceName: input.proofOfResidenceName ?? null,
+          proofOfResidenceMimeType: input.proofOfResidenceMimeType ?? null,
+          passportPhotoDataUrl: input.passportPhotoDataUrl ?? null,
+          passportPhotoName: input.passportPhotoName ?? null,
+          passportPhotoMimeType: input.passportPhotoMimeType ?? null,
+          proofOfTenureDataUrl: input.proofOfTenureDataUrl ?? null,
+          proofOfTenureName: input.proofOfTenureName ?? null,
+          proofOfTenureMimeType: input.proofOfTenureMimeType ?? null,
           submittedAt,
         })
         .returning({
